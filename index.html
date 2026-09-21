@@ -291,7 +291,6 @@
       font-size: 9px;
       font-weight: 700;
       line-height: 1;
-      text-transform: uppercase;
       -webkit-box-orient: vertical;
       -webkit-line-clamp: 3;
     }
@@ -1161,11 +1160,6 @@
       opacity: 0.45;
     }
 
-    @page impression-portrait {
-      size: 210mm 297mm;
-      margin: 10mm;
-    }
-
     @page impression-paysage {
       size: 297mm 210mm;
       margin: 10mm;
@@ -1199,26 +1193,10 @@
 
       .feuille-impression {
         position: relative;
-        overflow: hidden !important;
-        background: #fff;
-        break-after: page;
-        page-break-after: always;
-      }
-
-      .feuille-impression:last-child {
-        break-after: auto;
-        page-break-after: auto;
-      }
-
-      .feuille-impression.portrait {
-        width: 190mm;
-        height: 277mm;
-        page: impression-portrait;
-      }
-
-      .feuille-impression.paysage {
         width: 277mm;
         height: 190mm;
+        overflow: hidden !important;
+        background: #fff;
         page: impression-paysage;
       }
 
@@ -1227,7 +1205,7 @@
         width: 2600px !important;
         height: 1700px !important;
         background: #fff !important;
-        transform: none !important;
+        transform-origin: top left !important;
       }
 
       .cadre-tache {
@@ -1351,13 +1329,7 @@
   <dialog id="dialogue-impression">
     <form id="formulaire-impression">
       <h2>Imprimer le planning</h2>
-      <p>Le planning sera réparti sur autant de pages A4 que nécessaire. Dans la fenêtre suivante, choisissez « Enregistrer au format PDF » pour créer un PDF.</p>
-
-      <fieldset class="choix-impression">
-        <legend>Format des pages</legend>
-        <label><input type="radio" name="format-impression" value="portrait"> Portrait — 21 × 29,7 cm</label>
-        <label><input type="radio" name="format-impression" value="paysage" checked> Paysage — 29,7 × 21 cm</label>
-      </fieldset>
+      <p>Le graphe sera ajusté sur une seule page A4 en paysage. Pour conserver un tableau, utilisez une copie d’écran.</p>
 
       <div class="actions">
         <button id="annuler-impression" type="button">Annuler</button>
@@ -1699,7 +1671,7 @@
         <ul>
           <li><strong>Enregistrer</strong> télécharge une copie JSON du projet.</li>
           <li><strong>Lier le fichier de travail</strong> autorise l’écriture directe dans un fichier lorsque le navigateur le permet.</li>
-          <li><strong>Imprimer</strong> propose un format A4 portrait ou paysage et répartit le planning sur plusieurs pages si nécessaire.</li>
+          <li><strong>Imprimer</strong> ajuste le graphe sur une page A4 en paysage. Pour les tableaux, utilisez une copie d’écran.</li>
         </ul>
       </div>
 
@@ -1845,7 +1817,6 @@
     let seuilBudgetMensuel = 0;
     let calendrierProjet = creerCalendrierParDefaut();
     let joursNonTravaillesEdition = [];
-    let formatImpression = "paysage";
     let fichierTravailLie = null;
     let ouvertureProjetEnCours = false;
     let chargementInitialActif = true;
@@ -1950,7 +1921,6 @@
     boutonImprimerProjet.addEventListener("click", ouvrirImpression);
     formulaireImpression.addEventListener("submit", (evenement) => {
       evenement.preventDefault();
-      formatImpression = formulaireImpression.elements["format-impression"].value;
       dialogueImpression.close();
       window.requestAnimationFrame(() => window.print());
     });
@@ -2088,6 +2058,7 @@
         tacheEnEdition.dataset.objet = objet;
         tacheEnEdition.dataset.duree = String(duree);
         tacheEnEdition.querySelector(".nom-tache").textContent = nom;
+        ajusterTailleNomTache(tacheEnEdition);
         tacheEnEdition.querySelector(".texte-objet").textContent = objet;
         afficherDuree(tacheEnEdition);
         actualiserLiaisonsDe(tacheEnEdition);
@@ -2535,6 +2506,22 @@
       sauvegarderProjetLocal();
     }
 
+    function ajusterTailleNomTache(tache) {
+      const nom = tache?.querySelector(".nom-tache");
+      if (!nom) return;
+
+      const tailleMaximale = 9;
+      const tailleMinimale = 6;
+      nom.style.fontSize = `${tailleMaximale}px`;
+
+      while (
+        nom.scrollHeight > nom.clientHeight + 1
+        && Number.parseFloat(nom.style.fontSize) > tailleMinimale
+      ) {
+        nom.style.fontSize = `${Number.parseFloat(nom.style.fontSize) - 0.5}px`;
+      }
+    }
+
     function creerTache(nom, duree, x, y, options = {}) {
       const tache = document.createElement("div");
       tache.className = "tache";
@@ -2577,6 +2564,7 @@
       tache.dataset.duree = String(duree);
       tache.dataset.contrainteDebut = options.contrainteDebut || "";
       tache.querySelector(".nom-tache").textContent = nom;
+      ajusterTailleNomTache(tache);
       tache.querySelector(".texte-objet").textContent = tache.dataset.objet;
       afficherDuree(tache);
       afficherRessourcesTache(tache);
@@ -4651,24 +4639,19 @@
       const bas = Math.max(...taches.map((tache) => tache.offsetTop + tache.offsetHeight));
       const largeurPlanning = Math.max(1, droite - gauche);
       const hauteurPlanning = Math.max(1, bas - haut);
-      const largeurPage = formatImpression === "portrait" ? 718 : 1047;
-      const hauteurPage = formatImpression === "portrait" ? 1047 : 718;
-      const colonnes = Math.ceil(largeurPlanning / largeurPage);
-      const lignes = Math.ceil(hauteurPlanning / hauteurPage);
-
-      for (let ligne = 0; ligne < lignes; ligne += 1) {
-        for (let colonne = 0; colonne < colonnes; colonne += 1) {
-          const feuille = document.createElement("section");
-          feuille.className = `feuille-impression ${formatImpression}`;
-          const copiePlanning = zoneTravail.cloneNode(true);
-          copiePlanning.classList.add("zone-impression-source");
-          copiePlanning.setAttribute("aria-hidden", "true");
-          copiePlanning.style.left = `${-gauche - colonne * largeurPage}px`;
-          copiePlanning.style.top = `${-haut - ligne * hauteurPage}px`;
-          feuille.appendChild(copiePlanning);
-          zoneImpressionMultipage.appendChild(feuille);
-        }
-      }
+      const largeurPage = 1047;
+      const hauteurPage = 718;
+      const echelle = Math.min(largeurPage / largeurPlanning, hauteurPage / hauteurPlanning, 1);
+      const feuille = document.createElement("section");
+      feuille.className = "feuille-impression";
+      const copiePlanning = zoneTravail.cloneNode(true);
+      copiePlanning.classList.add("zone-impression-source");
+      copiePlanning.setAttribute("aria-hidden", "true");
+      copiePlanning.style.left = `${-gauche * echelle}px`;
+      copiePlanning.style.top = `${-haut * echelle}px`;
+      copiePlanning.style.transform = `scale(${echelle})`;
+      feuille.appendChild(copiePlanning);
+      zoneImpressionMultipage.appendChild(feuille);
     }
 
     function nettoyerImpression() {
