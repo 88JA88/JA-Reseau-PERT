@@ -1249,6 +1249,7 @@
         </div>
         <button id="imprimer-projet" class="bouton-barre" type="button">Imprimer</button>
         <button id="ouvrir-mode-emploi" class="bouton-barre" type="button">Mode d’emploi</button>
+        <button id="mettre-a-jour-application" class="bouton-barre" type="button">Mise à jour application</button>
       </div>
       <div class="ligne-commandes ligne-commandes-secondaire">
         <button id="enregistrer-projet" class="bouton-barre" type="button">Enregistrer</button>
@@ -1641,6 +1642,7 @@
     const boutonBudgetMensuel = document.querySelector("#budget-mensuel");
     const boutonImprimerProjet = document.querySelector("#imprimer-projet");
     const boutonOuvrirModeEmploi = document.querySelector("#ouvrir-mode-emploi");
+    const boutonMettreAJourApplication = document.querySelector("#mettre-a-jour-application");
     const boutonGererRessources = document.querySelector("#gerer-ressources");
     const boutonOuvrirCalendrier = document.querySelector("#ouvrir-calendrier");
     const fichierProjet = document.querySelector("#fichier-projet");
@@ -1831,6 +1833,24 @@
     });
     boutonImprimerProjet.addEventListener("click", () => window.print());
     boutonOuvrirModeEmploi.addEventListener("click", () => dialogueModeEmploi.showModal());
+    boutonMettreAJourApplication.addEventListener("click", async () => {
+      const libelleInitial = boutonMettreAJourApplication.textContent;
+      boutonMettreAJourApplication.disabled = true;
+      boutonMettreAJourApplication.textContent = "Actualisation…";
+
+      try {
+        if ("serviceWorker" in navigator && ["http:", "https:"].includes(location.protocol)) {
+          const enregistrement = await navigator.serviceWorker.getRegistration("./");
+          if (enregistrement) await enregistrement.update();
+        }
+        window.location.reload();
+      } catch (erreur) {
+        console.warn("Mise à jour de l’application indisponible.", erreur);
+        boutonMettreAJourApplication.disabled = false;
+        boutonMettreAJourApplication.textContent = libelleInitial;
+        window.alert("La mise à jour n’a pas pu être vérifiée. Vérifiez la connexion puis réessayez.");
+      }
+    });
     dialogueModeEmploi.addEventListener("click", (evenement) => {
       if (evenement.target === dialogueModeEmploi) dialogueModeEmploi.close();
     });
