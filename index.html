@@ -584,7 +584,8 @@
       width: min(650px, calc(100vw - 32px));
     }
 
-    #dialogue-affectations {
+    #dialogue-affectations,
+    #dialogue-affectation-ressources {
       width: min(980px, calc(100vw - 32px));
     }
 
@@ -707,6 +708,7 @@
     }
 
     .conteneur-tableau-affectations,
+    .conteneur-tableau-affectation-ressources,
     .conteneur-tableau-activites {
       max-height: min(62vh, 560px);
       overflow: auto;
@@ -715,6 +717,7 @@
     }
 
     #tableau-affectations,
+    #tableau-affectation-ressources,
     #tableau-activites {
       width: 100%;
       border-collapse: collapse;
@@ -728,6 +731,8 @@
 
     #tableau-affectations th,
     #tableau-affectations td,
+    #tableau-affectation-ressources th,
+    #tableau-affectation-ressources td,
     #tableau-activites th,
     #tableau-activites td {
       padding: 4px 8px;
@@ -740,12 +745,15 @@
 
     #tableau-affectations th:last-child,
     #tableau-affectations td:last-child,
+    #tableau-affectation-ressources th:last-child,
+    #tableau-affectation-ressources td:last-child,
     #tableau-activites th:last-child,
     #tableau-activites td:last-child {
       border-right: 0;
     }
 
     #tableau-affectations thead th,
+    #tableau-affectation-ressources thead th,
     #tableau-activites thead th {
       position: sticky;
       top: 0;
@@ -755,6 +763,7 @@
     }
 
     #tableau-affectations .valeur-numerique,
+    #tableau-affectation-ressources .valeur-numerique,
     #tableau-activites .valeur-numerique {
       text-align: right;
       white-space: nowrap;
@@ -934,7 +943,13 @@
       font-weight: 700;
     }
 
-    #tableau-affectations tfoot td {
+    #tableau-affectation-ressources .total-activite td {
+      background: #f3f5f7;
+      font-weight: 700;
+    }
+
+    #tableau-affectations tfoot td,
+    #tableau-affectation-ressources tfoot td {
       position: sticky;
       bottom: 0;
       background: #dfe8f2;
@@ -1265,8 +1280,9 @@
         <p id="resume-projet-global"><strong>Durée totale :</strong> non calculable — <strong>Coût total :</strong> 0,00 €</p>
       </div>
       <div class="boutons-tableaux">
-        <button id="afficher-tableau-affectations" type="button">Tableau des affectations</button>
         <button id="afficher-tableau-activites" type="button">Tableau des activités</button>
+        <button id="afficher-affectation-ressources" type="button">Affectation des ressources</button>
+        <button id="afficher-tableau-affectations" type="button">Affectation des activités</button>
         <button id="afficher-gantt" type="button">Diagramme de Gantt</button>
       </div>
     </div>
@@ -1301,7 +1317,7 @@
       <textarea id="objet" name="objet" rows="2" maxlength="160"></textarea>
 
       <label for="duree">Durée</label>
-      <input id="duree" name="duree" type="number" min="0.1" step="0.1" required inputmode="decimal">
+      <input id="duree" name="duree" type="number" min="0" step="0.1" inputmode="decimal">
 
       <div class="actions">
         <button id="annuler" type="button">Annuler</button>
@@ -1433,7 +1449,7 @@
 
   <dialog id="dialogue-affectations">
     <form method="dialog">
-      <h2>Tableau des affectations</h2>
+      <h2>Affectation des activités</h2>
       <div class="conteneur-tableau-affectations">
         <table id="tableau-affectations">
           <thead>
@@ -1448,6 +1464,32 @@
           </thead>
           <tbody id="corps-tableau-affectations"></tbody>
           <tfoot id="pied-tableau-affectations"></tfoot>
+        </table>
+      </div>
+
+      <div class="actions">
+        <button type="submit">Fermer</button>
+      </div>
+    </form>
+  </dialog>
+
+  <dialog id="dialogue-affectation-ressources">
+    <form method="dialog">
+      <h2>Affectation des ressources</h2>
+      <div class="conteneur-tableau-affectation-ressources">
+        <table id="tableau-affectation-ressources">
+          <thead>
+            <tr>
+              <th scope="col">Activité</th>
+              <th scope="col">Ressource</th>
+              <th scope="col">Discipline</th>
+              <th scope="col" class="valeur-numerique">Durée</th>
+              <th scope="col" class="valeur-numerique">Coût un.</th>
+              <th scope="col" class="valeur-numerique">Coût affectation</th>
+            </tr>
+          </thead>
+          <tbody id="corps-tableau-affectation-ressources"></tbody>
+          <tfoot id="pied-tableau-affectation-ressources"></tfoot>
         </table>
       </div>
 
@@ -1586,7 +1628,8 @@
         <h3>Contrôler le projet et les coûts</h3>
         <ul>
           <li><strong>Vérifier le projet</strong> affiche les erreurs bloquantes et analyse les affectations de ressources.</li>
-          <li><strong>Tableau des affectations</strong> récapitule les activités et les coûts par ressource affectée.</li>
+          <li><strong>Affectation des ressources</strong> récapitule les ressources et les coûts par activité.</li>
+          <li><strong>Affectation des activités</strong> récapitule les activités et les coûts par ressource affectée.</li>
           <li><strong>Tableau des activités</strong> récapitule les dates, les marges et les dépendances du graphe.</li>
           <li><strong>Diagramme de Gantt</strong> affiche le projet sur une échelle de temps, sans permettre de le modifier.</li>
           <li><strong>Budget mensuel</strong> compare les coûts mensuels prévus du projet au budget mensuel saisi, quelle que soit l’unité de temps choisie.</li>
@@ -1682,6 +1725,10 @@
     const dialogueAffectations = document.querySelector("#dialogue-affectations");
     const corpsTableauAffectations = document.querySelector("#corps-tableau-affectations");
     const piedTableauAffectations = document.querySelector("#pied-tableau-affectations");
+    const boutonAfficherAffectationRessources = document.querySelector("#afficher-affectation-ressources");
+    const dialogueAffectationRessources = document.querySelector("#dialogue-affectation-ressources");
+    const corpsTableauAffectationRessources = document.querySelector("#corps-tableau-affectation-ressources");
+    const piedTableauAffectationRessources = document.querySelector("#pied-tableau-affectation-ressources");
     const boutonAfficherTableauActivites = document.querySelector("#afficher-tableau-activites");
     const dialogueActivites = document.querySelector("#dialogue-activites");
     const corpsTableauActivites = document.querySelector("#corps-tableau-activites");
@@ -1814,6 +1861,10 @@
     boutonAfficherTableauAffectations.addEventListener("click", ouvrirTableauAffectations);
     dialogueAffectations.addEventListener("click", (evenement) => {
       if (evenement.target === dialogueAffectations) dialogueAffectations.close();
+    });
+    boutonAfficherAffectationRessources.addEventListener("click", ouvrirTableauAffectationRessources);
+    dialogueAffectationRessources.addEventListener("click", (evenement) => {
+      if (evenement.target === dialogueAffectationRessources) dialogueAffectationRessources.close();
     });
     boutonAfficherTableauActivites.addEventListener("click", ouvrirTableauActivites);
     dialogueActivites.addEventListener("click", (evenement) => {
@@ -1948,8 +1999,8 @@
 
       const nom = champNom.value.trim();
       const objet = champObjet.value.trim();
-      const duree = Number(champDuree.value);
-      if (!nom || !Number.isFinite(duree) || duree <= 0) return;
+      const duree = champDuree.value.trim() === "" ? 0 : Number(champDuree.value);
+      if (!nom || !Number.isFinite(duree) || duree < 0) return;
 
       if (
         tacheEnEdition
@@ -2183,7 +2234,9 @@
       }
 
       affectationsDetails.push(saisie);
-      actualiserListeAffectations(saisie.ressourceId);
+      champDureeRessource.value = "";
+      actualiserChoixRessourcesActivite();
+      actualiserListeAffectations();
     }
 
     function modifierAffectation() {
@@ -4030,6 +4083,84 @@
       }
 
       dialogueAffectations.showModal();
+    }
+
+    function ouvrirTableauAffectationRessources() {
+      corpsTableauAffectationRessources.replaceChildren();
+      piedTableauAffectationRessources.replaceChildren();
+
+      const unite = champUnite.value.trim() || "Un.";
+      let nombreAffectations = 0;
+      let dureeGenerale = 0;
+      let coutGeneral = 0;
+
+      [...zoneTravail.querySelectorAll(".tache")]
+        .sort((a, b) => String(a.dataset.nom).localeCompare(
+          String(b.dataset.nom),
+          "fr",
+          { sensitivity: "base" }
+        ))
+        .forEach((tache) => {
+          const affectations = lireAffectationsTache(tache)
+            .map((affectation) => ({ affectation, ressource: trouverRessource(affectation.ressourceId) }))
+            .filter(({ ressource }) => ressource);
+          if (!affectations.length) return;
+
+          affectations.sort((a, b) => `${a.ressource.nom} ${a.ressource.discipline}`.localeCompare(
+            `${b.ressource.nom} ${b.ressource.discipline}`,
+            "fr",
+            { sensitivity: "base" }
+          ));
+
+          let dureeActivite = 0;
+          let coutActivite = 0;
+          affectations.forEach(({ affectation, ressource }) => {
+            const duree = Number(affectation.duree);
+            const cout = duree * Number(ressource.coutUnitaire);
+            const ligne = document.createElement("tr");
+
+            ajouterCelluleTableau(ligne, tache.dataset.nom);
+            ajouterCelluleTableau(ligne, ressource.nom);
+            ajouterCelluleTableau(ligne, ressource.discipline);
+            ajouterCelluleTableau(ligne, `${formatDuree(duree)} (${unite})`, "valeur-numerique");
+            ajouterCelluleTableau(ligne, formaterMontantEuro(ressource.coutUnitaire), "valeur-numerique");
+            ajouterCelluleTableau(ligne, formaterMontantEuro(cout), "valeur-numerique");
+            corpsTableauAffectationRessources.appendChild(ligne);
+
+            nombreAffectations += 1;
+            dureeActivite += duree;
+            coutActivite += cout;
+          });
+
+          const ligneTotal = document.createElement("tr");
+          ligneTotal.className = "total-activite";
+          const libelleTotal = ajouterCelluleTableau(ligneTotal, `Total ${tache.dataset.nom}`);
+          libelleTotal.colSpan = 3;
+          ajouterCelluleTableau(ligneTotal, `${formatDuree(dureeActivite)} (${unite})`, "valeur-numerique");
+          ajouterCelluleTableau(ligneTotal, "", "valeur-numerique");
+          ajouterCelluleTableau(ligneTotal, formaterMontantEuro(coutActivite), "valeur-numerique");
+          corpsTableauAffectationRessources.appendChild(ligneTotal);
+
+          dureeGenerale += dureeActivite;
+          coutGeneral += coutActivite;
+        });
+
+      if (!nombreAffectations) {
+        const ligneVide = document.createElement("tr");
+        const celluleVide = ajouterCelluleTableau(ligneVide, "Aucune ressource n’est actuellement affectée à une activité.", "aucune-affectation");
+        celluleVide.colSpan = 6;
+        corpsTableauAffectationRessources.appendChild(ligneVide);
+      } else {
+        const ligneGenerale = document.createElement("tr");
+        const libelleGeneral = ajouterCelluleTableau(ligneGenerale, "Total général");
+        libelleGeneral.colSpan = 3;
+        ajouterCelluleTableau(ligneGenerale, `${formatDuree(dureeGenerale)} (${unite})`, "valeur-numerique");
+        ajouterCelluleTableau(ligneGenerale, "", "valeur-numerique");
+        ajouterCelluleTableau(ligneGenerale, formaterMontantEuro(coutGeneral), "valeur-numerique");
+        piedTableauAffectationRessources.appendChild(ligneGenerale);
+      }
+
+      dialogueAffectationRessources.showModal();
     }
 
     function ouvrirTableauActivites() {
