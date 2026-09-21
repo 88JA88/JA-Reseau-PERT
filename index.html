@@ -1,0 +1,4821 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>JA — Réseau PERT</title>
+  <meta name="application-name" content="JA — Réseau PERT">
+  <meta name="theme-color" content="#f8f9fa">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <meta name="apple-mobile-web-app-title" content="Réseau PERT">
+  <link rel="manifest" href="./manifest.webmanifest">
+  <link rel="apple-touch-icon" sizes="180x180" href="./assets/icons/ja-reseau-pert-180.png">
+  <style>
+    :root {
+      color-scheme: light;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      background: #e7e9ec;
+      color: #1f2933;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    html,
+    body {
+      width: 100%;
+      height: 100%;
+      margin: 0;
+      overflow: hidden;
+    }
+
+    body {
+      display: flex;
+      flex-direction: column;
+    }
+
+    .barre-superieure {
+      position: relative;
+      z-index: 10;
+      display: flex;
+      align-items: flex-start;
+      min-height: 58px;
+      padding: 8px 12px;
+      background: #f8f9fa;
+      border-bottom: 1px solid #c7ccd1;
+      box-shadow: 0 1px 4px rgb(31 41 51 / 8%);
+    }
+
+    .barre-superieure h1 {
+      margin: 0;
+      font-size: 17px;
+      font-weight: 650;
+      letter-spacing: -0.01em;
+    }
+
+    .identite-projet {
+      display: flex;
+      width: 100%;
+      flex-direction: column;
+      gap: 3px;
+    }
+
+    .ligne-commandes {
+      display: flex;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 7px;
+    }
+
+    .ligne-commandes-secondaire {
+      padding-left: 0;
+    }
+
+    .separateur-titre {
+      color: #64717d;
+      font-size: 16px;
+    }
+
+    #nom-fichier-actif {
+      max-width: 320px;
+      overflow: hidden;
+      color: #36414b;
+      font-size: 14px;
+      font-weight: 600;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .resume-projet {
+      display: flex;
+      align-items: flex-start;
+      flex-wrap: wrap;
+      column-gap: 36px;
+      row-gap: 4px;
+    }
+
+    #resume-ressources,
+    #resume-projet-global {
+      margin: 0;
+      color: #4d5964;
+      font-size: 12px;
+      line-height: 1.3;
+    }
+
+    #resume-ressources {
+      min-width: 260px;
+    }
+
+    .resume-ressource {
+      display: block;
+    }
+
+    .boutons-tableaux {
+      display: flex;
+      flex-wrap: wrap;
+      align-self: flex-start;
+      gap: 8px;
+    }
+
+    #afficher-tableau-affectations,
+    #afficher-tableau-activites,
+    #afficher-gantt {
+      align-self: flex-start;
+      height: 30px;
+      margin-top: 3px;
+      padding: 0 10px;
+      font-size: 12px;
+    }
+
+    .aide {
+      margin: 0;
+      color: #64717d;
+      font-size: 13px;
+    }
+
+    .parametre-unite {
+      display: flex;
+      align-items: center;
+      gap: 7px;
+    }
+
+    .parametre-unite label {
+      margin: 0;
+      color: #4d5964;
+      font-size: 13px;
+      font-weight: 650;
+    }
+
+    #unite {
+      width: 100px;
+      height: 32px;
+      margin: 0;
+      padding: 5px 8px;
+      text-align: center;
+    }
+
+    .cadre-travail {
+      flex: 1;
+      overflow: auto;
+      background: #dfe3e7;
+    }
+
+    #zone-travail {
+      position: relative;
+      width: 2600px;
+      height: 1700px;
+      background-color: #fbfbfa;
+      background-image:
+        linear-gradient(#edf0f2 1px, transparent 1px),
+        linear-gradient(90deg, #edf0f2 1px, transparent 1px);
+      background-size: 24px 24px;
+      cursor: crosshair;
+    }
+
+    #couche-liaisons {
+      position: absolute;
+      inset: 0;
+      z-index: 0;
+      width: 100%;
+      height: 100%;
+      overflow: visible;
+      pointer-events: none;
+    }
+
+    .liaison-visible {
+      stroke: #56636f;
+      stroke-width: 2;
+      pointer-events: none;
+    }
+
+    .liaison-cible {
+      stroke: transparent;
+      stroke-width: 14;
+      cursor: pointer;
+      pointer-events: stroke;
+      touch-action: none;
+    }
+
+    .liaison-critique .liaison-visible {
+      stroke: #b42318;
+      stroke-width: 3;
+    }
+
+    .liaison-selectionnee .liaison-visible {
+      stroke: #2877c7;
+      stroke-width: 3;
+    }
+
+    .liaison-apercu {
+      stroke: #2877c7;
+      stroke-width: 2;
+      stroke-dasharray: 7 5;
+      pointer-events: none;
+    }
+
+    .tache {
+      position: absolute;
+      z-index: 1;
+      width: 200px;
+      padding: 25px 0;
+      cursor: grab;
+      user-select: none;
+      touch-action: none;
+    }
+
+    .cadre-tache {
+      position: relative;
+      min-height: 48px;
+      padding: 10px;
+      border: 1px solid #6f7c88;
+      border-radius: 7px;
+      background: #fff;
+      box-shadow: 0 3px 9px rgb(31 41 51 / 14%);
+    }
+
+    .connecteur {
+      flex: 0 0 auto;
+      width: 14px;
+      min-width: 0;
+      height: 14px;
+      padding: 0;
+      border: 2px solid #fff;
+      border-radius: 50%;
+      background: #3275c7;
+      box-shadow: 0 0 0 1px #2867b2;
+      cursor: crosshair;
+      touch-action: none;
+    }
+
+    .connecteur:hover {
+      background: #1f5fa9;
+    }
+
+    .tache:active {
+      cursor: grabbing;
+    }
+
+    .tache.en-deplacement {
+      z-index: 2;
+    }
+
+    .tache.en-deplacement .cadre-tache {
+      box-shadow: 0 7px 18px rgb(31 41 51 / 22%);
+    }
+
+    .tache.critique .cadre-tache {
+      outline: 3px solid #b42318;
+      outline-offset: 1px;
+    }
+
+    .tache.selectionnee .cadre-tache {
+      outline: 3px solid #2877c7;
+      outline-offset: 1px;
+    }
+
+    .entete-tache {
+      display: flex;
+      align-items: center;
+      gap: 9px;
+      min-height: 28px;
+    }
+
+    .nom-tache {
+      display: -webkit-box;
+      overflow: hidden;
+      overflow-wrap: normal;
+      word-break: keep-all;
+      hyphens: none;
+      font-size: 9px;
+      font-weight: 700;
+      line-height: 1;
+      text-transform: uppercase;
+      -webkit-box-orient: vertical;
+      -webkit-line-clamp: 3;
+    }
+
+    .duree-tache {
+      position: absolute;
+      bottom: 0;
+      left: 0;
+      color: #111;
+      font-size: 12px;
+      white-space: nowrap;
+    }
+
+    .objet-tache {
+      display: none;
+    }
+
+    .libelle-objet {
+      margin-bottom: 2px;
+      color: #111;
+      font-size: 12px;
+      font-weight: 700;
+    }
+
+    .texte-objet {
+      min-height: 31px;
+      max-height: 31px;
+      padding: 3px 5px;
+      overflow: hidden;
+      border: 1px solid #cdd3d8;
+      border-radius: 4px;
+      background: #fafbfb;
+      color: #111;
+      font-size: 12px;
+      line-height: 1.15;
+      white-space: pre-wrap;
+    }
+
+    .date-exterieure {
+      position: absolute;
+      width: 155px;
+      color: #111;
+      font-size: 12px;
+    }
+
+    .date-debut {
+      top: 0;
+      left: 0;
+    }
+
+    .date-debut .debut-tot {
+      width: 100px;
+    }
+
+    .date-fin {
+      right: 0;
+      width: 100px;
+      bottom: 0;
+    }
+
+    .ressources-exterieures {
+      position: absolute;
+      top: 0;
+      left: 100px;
+      width: 330px;
+      color: #111;
+      font-size: 12px;
+      line-height: 1.25;
+      text-align: left;
+      display: none;
+    }
+
+    .ressources-exterieures:empty {
+      display: none;
+    }
+
+    .ressource-exterieure {
+      overflow-wrap: anywhere;
+    }
+
+    .ligne-date {
+      display: flex;
+      align-items: center;
+      gap: 5px;
+    }
+
+    .date-fin .ligne-date {
+      justify-content: flex-end;
+    }
+
+    .date-fin .fin-tard {
+      width: 82px;
+      text-align: right;
+    }
+
+    .cout-total-exterieur {
+      display: none;
+    }
+
+    .icone-calendrier {
+      position: relative;
+      display: inline-block;
+      flex: 0 0 auto;
+      width: 13px;
+      height: 12px;
+      border: 1.5px solid #111;
+      border-radius: 2px;
+    }
+
+    .icone-calendrier::before {
+      position: absolute;
+      top: 2px;
+      right: -1.5px;
+      left: -1.5px;
+      border-top: 1.5px solid #111;
+      content: "";
+    }
+
+    .ouvrir-calendrier {
+      width: 15px;
+      min-width: 0;
+      height: 18px;
+      padding: 0;
+      border: 0;
+      background: transparent;
+    }
+
+    .date-exterieure.contrainte-active {
+      color: #b42318;
+    }
+
+    .debut-tot,
+    .fin-tard {
+      height: 18px;
+      margin: 0;
+      padding: 0;
+      border: 0;
+      background: transparent;
+      color: #111;
+      font-size: 12px;
+      user-select: auto;
+    }
+
+    .ligne-date input {
+      width: 130px;
+    }
+
+    .ligne-date input::-webkit-calendar-picker-indicator {
+      display: none;
+      -webkit-appearance: none;
+    }
+
+    .fin-tard {
+      color: #111;
+    }
+
+    .debut-tot.avec-contrainte {
+      color: #b42318;
+      font-weight: 700;
+    }
+
+    .marge-totale {
+      position: absolute;
+      top: 0;
+      right: 0;
+      z-index: 2;
+      min-width: 78px;
+      padding: 0 2px;
+      background: #fff;
+      color: #111;
+      font-size: 11px;
+      line-height: 18px;
+      text-align: right;
+      white-space: nowrap;
+    }
+
+    dialog {
+      width: min(390px, calc(100vw - 32px));
+      padding: 0;
+      border: 0;
+      border-radius: 12px;
+      background: #fff;
+      color: #1f2933;
+      box-shadow: 0 24px 70px rgb(20 28 35 / 30%);
+    }
+
+    dialog::backdrop {
+      background: rgb(31 41 51 / 35%);
+    }
+
+    dialog.fenetre-flottante {
+      position: fixed;
+      z-index: 30;
+      max-width: calc(100vw - 16px);
+      max-height: calc(100vh - 16px);
+      margin: 0;
+      overflow: auto;
+    }
+
+    form {
+      padding: 24px;
+    }
+
+    form h2 {
+      margin: 0 0 21px;
+      font-size: 19px;
+    }
+
+    label {
+      display: block;
+      margin: 0 0 7px;
+      font-size: 13px;
+      font-weight: 650;
+    }
+
+    input,
+    textarea,
+    select {
+      width: 100%;
+      margin: 0 0 17px;
+      padding: 8px 10px;
+      border: 1px solid #aab2b9;
+      border-radius: 6px;
+      background: #fff;
+      color: #1f2933;
+      font: inherit;
+    }
+
+    input {
+      height: 40px;
+    }
+
+    textarea {
+      min-height: 58px;
+      resize: vertical;
+    }
+
+    input:focus,
+    textarea:focus,
+    select:focus {
+      border-color: #3275c7;
+      outline: 3px solid rgb(50 117 199 / 18%);
+    }
+
+    #dialogue-ressources {
+      width: min(520px, calc(100vw - 32px));
+    }
+
+    #dialogue-calendrier {
+      width: min(560px, calc(100vw - 32px));
+    }
+
+    .parametre-calendrier {
+      margin-bottom: 14px;
+    }
+
+    .ajout-jour-non-travaille {
+      display: grid;
+      grid-template-columns: minmax(160px, 1fr) auto;
+      align-items: end;
+      gap: 8px;
+    }
+
+    #liste-jours-feries-officiels,
+    #liste-jours-non-travailles {
+      max-height: 210px;
+      margin: 10px 0 0;
+      padding: 0;
+      overflow: auto;
+      list-style: none;
+    }
+
+    #liste-jours-feries-officiels li,
+    #liste-jours-non-travailles li {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      padding: 6px 8px;
+      border-bottom: 1px solid #dfe3e6;
+    }
+
+    #liste-jours-feries-officiels .liste-vide,
+    #liste-jours-non-travailles .liste-vide {
+      color: #64717d;
+      font-style: italic;
+    }
+
+    #dialogue-verification {
+      width: min(650px, calc(100vw - 32px));
+    }
+
+    #dialogue-affectations {
+      width: min(980px, calc(100vw - 32px));
+    }
+
+    #dialogue-activites {
+      width: min(1280px, calc(100vw - 32px));
+    }
+
+    #dialogue-gantt {
+      width: min(1400px, calc(100vw - 24px));
+    }
+
+    #dialogue-budget {
+      width: min(760px, calc(100vw - 32px));
+    }
+
+    #dialogue-mode-emploi {
+      width: min(720px, calc(100vw - 32px));
+      max-height: calc(100vh - 32px);
+    }
+
+    #dialogue-mode-emploi form {
+      display: flex;
+      max-height: calc(100vh - 32px);
+      flex-direction: column;
+    }
+
+    .contenu-mode-emploi {
+      overflow: auto;
+      padding-right: 8px;
+      color: #26323c;
+      font-size: 13px;
+      line-height: 1.45;
+    }
+
+    .contenu-mode-emploi h3 {
+      margin: 18px 0 6px;
+      font-size: 14px;
+    }
+
+    .contenu-mode-emploi h3:first-child {
+      margin-top: 0;
+    }
+
+    .contenu-mode-emploi ul {
+      margin: 6px 0 10px;
+      padding-left: 22px;
+    }
+
+    .contenu-mode-emploi li + li {
+      margin-top: 4px;
+    }
+
+    .parametre-budget {
+      display: grid;
+      grid-template-columns: minmax(180px, 1fr) auto;
+      align-items: end;
+      gap: 10px;
+      margin-bottom: 14px;
+    }
+
+    .parametre-budget input {
+      margin-bottom: 0;
+    }
+
+    .conteneur-tableau-budget {
+      max-height: min(55vh, 480px);
+      overflow: auto;
+      border: 1px solid #c7ccd1;
+      border-radius: 7px;
+    }
+
+    #tableau-budget {
+      width: 100%;
+      border-collapse: collapse;
+      color: #111;
+      font-size: 12px;
+    }
+
+    #tableau-budget th,
+    #tableau-budget td {
+      padding: 8px 10px;
+      border-bottom: 1px solid #dfe3e6;
+      text-align: left;
+    }
+
+    #tableau-budget thead th {
+      position: sticky;
+      top: 0;
+      z-index: 1;
+      background: #e9edf1;
+    }
+
+    #tableau-budget .valeur-numerique {
+      text-align: right;
+      white-space: nowrap;
+    }
+
+    #tableau-budget .budget-depasse td {
+      background: #fdecea;
+      color: #9b1c13;
+      font-weight: 700;
+    }
+
+    #tableau-budget .budget-conforme td:last-child {
+      color: #176b35;
+      font-weight: 700;
+    }
+
+    #resume-budget {
+      margin: 10px 0;
+      color: #26323c;
+      font-size: 13px;
+      font-weight: 700;
+    }
+
+    #avertissement-budget {
+      margin: 8px 0 0;
+      color: #8a5700;
+      font-size: 12px;
+    }
+
+    .conteneur-tableau-affectations,
+    .conteneur-tableau-activites {
+      max-height: min(62vh, 560px);
+      overflow: auto;
+      border: 1px solid #c7ccd1;
+      border-radius: 7px;
+    }
+
+    #tableau-affectations,
+    #tableau-activites {
+      width: 100%;
+      border-collapse: collapse;
+      color: #111;
+      font-size: 12px;
+    }
+
+    #tableau-activites {
+      min-width: 1180px;
+    }
+
+    #tableau-affectations th,
+    #tableau-affectations td,
+    #tableau-activites th,
+    #tableau-activites td {
+      padding: 4px 8px;
+      border-right: 1px solid #dfe3e6;
+      border-bottom: 1px solid #dfe3e6;
+      line-height: 1.2;
+      text-align: left;
+      vertical-align: top;
+    }
+
+    #tableau-affectations th:last-child,
+    #tableau-affectations td:last-child,
+    #tableau-activites th:last-child,
+    #tableau-activites td:last-child {
+      border-right: 0;
+    }
+
+    #tableau-affectations thead th,
+    #tableau-activites thead th {
+      position: sticky;
+      top: 0;
+      z-index: 1;
+      background: #e9edf1;
+      white-space: nowrap;
+    }
+
+    #tableau-affectations .valeur-numerique,
+    #tableau-activites .valeur-numerique {
+      text-align: right;
+      white-space: nowrap;
+    }
+
+    #tableau-activites .valeur-date {
+      white-space: nowrap;
+    }
+
+    #tableau-activites .nom-activite-critique {
+      font-weight: 700;
+    }
+
+    .legende-gantt {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 14px;
+      margin: 0 0 10px;
+      color: #4d5964;
+      font-size: 12px;
+    }
+
+    .legende-gantt span::before {
+      display: inline-block;
+      width: 18px;
+      height: 9px;
+      margin-right: 5px;
+      border-radius: 3px;
+      background: #3275c7;
+      content: "";
+    }
+
+    .legende-gantt .legende-critique::before {
+      background: #b42318;
+    }
+
+    .legende-gantt .legende-marge::before {
+      box-sizing: border-box;
+      border: 1px solid #8e99a3;
+      background: #fff;
+    }
+
+    .legende-gantt .unite-temps-gantt::before {
+      display: none;
+    }
+
+    .conteneur-gantt {
+      max-height: min(66vh, 620px);
+      overflow: auto;
+      border: 1px solid #c7ccd1;
+      border-radius: 7px;
+      background: #fff;
+      overscroll-behavior: contain;
+    }
+
+    #gantt {
+      --largeur-libelle-gantt: 250px;
+      --largeur-temps-gantt: 700px;
+      --pas-grille-gantt: 100px;
+      width: calc(var(--largeur-libelle-gantt) + var(--largeur-temps-gantt));
+      min-width: 100%;
+      color: #1d2933;
+      font-size: 12px;
+    }
+
+    .ligne-gantt {
+      display: grid;
+      grid-template-columns: var(--largeur-libelle-gantt) var(--largeur-temps-gantt);
+      min-height: 28px;
+      border-bottom: 1px solid #dfe3e6;
+    }
+
+    .ligne-gantt:last-child {
+      border-bottom: 0;
+    }
+
+    .entete-gantt {
+      position: sticky;
+      top: 0;
+      z-index: 4;
+      min-height: 46px;
+      background: #e9edf1;
+      font-weight: 700;
+    }
+
+    .libelle-gantt {
+      position: sticky;
+      left: 0;
+      z-index: 2;
+      display: flex;
+      align-items: center;
+      padding: 6px 10px;
+      border-right: 1px solid #c7ccd1;
+      background: #fff;
+    }
+
+    .entete-gantt .libelle-gantt {
+      z-index: 5;
+      background: #e9edf1;
+    }
+
+    .libelle-gantt.critique {
+      font-weight: 750;
+    }
+
+    .echelle-gantt,
+    .zone-temps-gantt {
+      position: relative;
+      min-width: 0;
+      background-image: linear-gradient(to right, #9da8b2 1px, transparent 1px);
+      background-size: var(--pas-grille-gantt) 100%;
+    }
+
+    .graduation-gantt {
+      position: absolute;
+      top: 7px;
+      z-index: 2;
+      padding-left: 5px;
+      color: #35414c;
+      white-space: nowrap;
+    }
+
+    .barre-gantt {
+      position: absolute;
+      top: 2px;
+      z-index: 2;
+      min-width: 3px;
+      height: 23px;
+      overflow: hidden;
+      border-radius: 4px;
+      background: #3275c7;
+      box-shadow: inset 0 0 0 1px rgb(0 0 0 / 12%);
+      color: #fff;
+      font-size: 11px;
+      font-weight: 700;
+      line-height: 23px;
+      text-align: center;
+      white-space: nowrap;
+    }
+
+    .barre-gantt.critique {
+      background: #b42318;
+    }
+
+    .marge-gantt {
+      position: absolute;
+      top: 2px;
+      z-index: 2;
+      box-sizing: border-box;
+      min-width: 1px;
+      height: 23px;
+      border: 1px solid #8e99a3;
+      border-left: 0;
+      border-radius: 0 4px 4px 0;
+      background: #fff;
+    }
+
+    .jour-non-travaille-gantt {
+      position: absolute;
+      top: 0;
+      bottom: 0;
+      background: #eef1f3;
+      pointer-events: none;
+    }
+
+    .dates-indisponibles-gantt {
+      display: flex;
+      align-items: center;
+      height: 100%;
+      padding-left: 10px;
+      color: #7a4d00;
+      font-style: italic;
+    }
+
+    #tableau-affectations .total-ressource td {
+      background: #f3f5f7;
+      font-weight: 700;
+    }
+
+    #tableau-affectations tfoot td {
+      position: sticky;
+      bottom: 0;
+      background: #dfe8f2;
+      font-weight: 750;
+    }
+
+    .aucune-affectation {
+      padding: 18px !important;
+      color: #4d5964;
+      text-align: center !important;
+    }
+
+    .resume-verification {
+      padding: 10px 12px;
+      border-radius: 7px;
+      background: #eef2f5;
+      font-size: 13px;
+      font-weight: 700;
+    }
+
+    .resume-verification.valide {
+      background: #e7f6ec;
+      color: #176b35;
+    }
+
+    .resume-verification.invalide {
+      background: #fdecea;
+      color: #a51d15;
+    }
+
+    .rapport-verification h3 {
+      margin: 18px 0 7px;
+      font-size: 14px;
+    }
+
+    .rapport-verification ul {
+      max-height: 180px;
+      margin: 0;
+      padding-left: 22px;
+      overflow: auto;
+      color: #111;
+      font-size: 13px;
+      line-height: 1.4;
+    }
+
+    .titre-erreurs {
+      color: #a51d15;
+    }
+
+    .titre-avertissements {
+      color: #8a5700;
+    }
+
+    #liste-ressources {
+      min-height: 155px;
+      color: #111;
+      font-size: 13px;
+    }
+
+    .actions-ressources {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 7px;
+      margin-bottom: 18px;
+    }
+
+    .actions-ressources button {
+      flex: 1 1 120px;
+    }
+
+    #dialogue-details {
+      width: min(540px, calc(100vw - 32px));
+    }
+
+    .affectation-ressource {
+      padding: 12px;
+      border: 1px solid #d5dade;
+      border-radius: 7px;
+      background: #f8f9fa;
+    }
+
+    .ligne-affectation {
+      display: grid;
+      grid-template-columns: minmax(0, 2fr) minmax(100px, 1fr);
+      gap: 10px;
+    }
+
+    #liste-affectations {
+      display: grid;
+      gap: 6px;
+      min-height: 105px;
+      margin-bottom: 10px;
+      color: #111;
+      font-size: 11px;
+    }
+
+    .affectation-liste-bouton {
+      width: 100%;
+      height: auto;
+      min-height: 44px;
+      padding: 8px 10px;
+      text-align: left;
+      white-space: normal;
+    }
+
+    .affectation-liste-bouton.selectionnee {
+      border-color: #2877c7;
+      background: #eaf3fc;
+      box-shadow: 0 0 0 2px rgb(40 119 199 / 18%);
+    }
+
+    .liste-affectations-vide {
+      margin: 0;
+      padding: 12px;
+      color: #64717d;
+      text-align: center;
+    }
+
+    .actions-affectation {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 7px;
+      margin-bottom: 14px;
+    }
+
+    .actions-affectation button {
+      flex: 1 1 115px;
+    }
+
+    .actions {
+      display: flex;
+      justify-content: flex-end;
+      gap: 9px;
+      margin-top: 7px;
+    }
+
+    .calcul-en-attente {
+      margin: 0 0 14px;
+      color: #4d5964;
+      font-size: 13px;
+    }
+
+    .calcul-en-attente strong {
+      color: #1f2933;
+    }
+
+    button {
+      min-width: 92px;
+      height: 38px;
+      padding: 0 15px;
+      border: 1px solid #aab2b9;
+      border-radius: 7px;
+      background: #f7f8f9;
+      color: #26323c;
+      font: inherit;
+      font-size: 13px;
+      font-weight: 650;
+      cursor: pointer;
+    }
+
+    button[type="submit"] {
+      border-color: #2867b2;
+      background: #3275c7;
+      color: #fff;
+    }
+
+    .bouton-barre {
+      min-width: auto;
+      height: 32px;
+      padding: 0 11px;
+      white-space: nowrap;
+      touch-action: manipulation;
+    }
+
+    .selecteur-fichier {
+      position: relative;
+      display: inline-flex;
+    }
+
+    .selecteur-fichier input[type="file"] {
+      position: absolute;
+      inset: 0;
+      z-index: 1;
+      width: 100%;
+      height: 100%;
+      margin: 0;
+      padding: 0;
+      opacity: 0;
+      cursor: pointer;
+    }
+
+    .commande-indisponible {
+      opacity: 0.45;
+    }
+
+    @page {
+      size: 297mm 210mm;
+      margin: 10mm;
+    }
+
+    @media print {
+      html,
+      body {
+        width: 277mm !important;
+        height: 190mm !important;
+        margin: 0 !important;
+        overflow: visible !important;
+        background: #fff;
+      }
+
+      body {
+        display: block;
+      }
+
+      .barre-superieure {
+        display: none;
+      }
+
+      .cadre-travail {
+        position: relative;
+        width: 277mm !important;
+        height: 190mm !important;
+        overflow: visible !important;
+        background: #fff;
+        break-inside: avoid;
+        page-break-inside: avoid;
+      }
+
+      #zone-travail {
+        position: absolute;
+        top: 0;
+        left: 0;
+        background: #fff;
+        transform: translate(
+          var(--impression-x, 0),
+          var(--impression-y, 0)
+        ) scale(var(--impression-echelle, 1));
+        transform-origin: top left;
+      }
+
+      .cadre-tache {
+        box-shadow: none;
+      }
+    }
+
+    @media (hover: none) and (pointer: coarse) {
+      .liaison-cible {
+        stroke-width: 24;
+      }
+
+      .date-debut {
+        width: 100px;
+      }
+
+      .date-debut .ligne-date {
+        gap: 2px;
+      }
+
+      .date-debut .debut-tot {
+        width: 82px;
+        font-size: 11px;
+      }
+
+      .ressources-exterieures {
+        left: 108px;
+        width: 322px;
+      }
+
+      .ligne-affectation {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    @media (max-width: 640px) {
+      .barre-superieure {
+        align-items: flex-start;
+        flex-direction: column;
+        justify-content: center;
+        gap: 3px;
+        min-height: 92px;
+      }
+
+      .ligne-commandes {
+        width: 100%;
+        flex-wrap: wrap;
+        gap: 7px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <header class="barre-superieure">
+    <div class="identite-projet">
+      <div class="ligne-commandes">
+        <h1>JA — Réseau PERT</h1>
+        <span class="separateur-titre" aria-hidden="true">—</span>
+        <span id="nom-fichier-actif">Aucun fichier</span>
+        <span class="selecteur-fichier">
+          <button class="bouton-barre" type="button" tabindex="-1" aria-hidden="true">Ouvrir</button>
+          <input id="fichier-projet" type="file" accept="application/json,.json" aria-label="Ouvrir un projet JSON">
+        </span>
+        <button id="nouveau-projet" class="bouton-barre" type="button">Nouveau projet</button>
+        <button id="gerer-ressources" class="bouton-barre" type="button">Ressources</button>
+        <button id="ouvrir-calendrier" class="bouton-barre" type="button">Calendrier</button>
+        <div class="parametre-unite">
+          <label for="unite">Unité</label>
+          <select id="unite">
+            <option value="j">Jour</option>
+            <option value="h">Heure</option>
+            <option value="sem">Semaine</option>
+          </select>
+        </div>
+        <button id="imprimer-projet" class="bouton-barre" type="button">Imprimer</button>
+        <button id="ouvrir-mode-emploi" class="bouton-barre" type="button">Mode d’emploi</button>
+      </div>
+      <div class="ligne-commandes ligne-commandes-secondaire">
+        <button id="enregistrer-projet" class="bouton-barre" type="button">Enregistrer</button>
+        <button id="lier-fichier-travail" class="bouton-barre" type="button">Lier le fichier de travail</button>
+        <button id="verifier-projet" class="bouton-barre" type="button">Vérifier le projet</button>
+        <button id="budget-mensuel" class="bouton-barre" type="button">Budget mensuel</button>
+        <button id="supprimer-activite" class="bouton-barre commande-indisponible" type="button" aria-disabled="true">Supprimer l’activité</button>
+        <button id="supprimer-liaison" class="bouton-barre commande-indisponible" type="button" aria-disabled="true">Supprimer la liaison</button>
+      </div>
+      <p class="aide">Double-cliquez dans le vide pour créer une activité. Sur une activité : clic gauche pour la sélectionner, double-clic gauche pour la modifier, clic droit pour renseigner ses détails. Sur iPad : toucher bref pour sélectionner, appui long pour ouvrir la fiche.</p>
+      <div class="resume-projet">
+        <p id="resume-ressources"><strong>Ressources utilisées :</strong> aucune</p>
+        <p id="resume-projet-global"><strong>Durée totale :</strong> non calculable — <strong>Coût total :</strong> 0,00 €</p>
+      </div>
+      <div class="boutons-tableaux">
+        <button id="afficher-tableau-affectations" type="button">Tableau des affectations</button>
+        <button id="afficher-tableau-activites" type="button">Tableau des activités</button>
+        <button id="afficher-gantt" type="button">Diagramme de Gantt</button>
+      </div>
+    </div>
+  </header>
+
+  <main class="cadre-travail">
+    <div id="zone-travail" aria-label="Zone de travail du planning">
+      <svg id="couche-liaisons" aria-hidden="true">
+        <defs>
+          <marker id="fleche" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto" markerUnits="strokeWidth">
+            <path d="M 0 0 L 8 4 L 0 8 Z" fill="#56636f"></path>
+          </marker>
+          <marker id="fleche-selectionnee" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto" markerUnits="strokeWidth">
+            <path d="M 0 0 L 8 4 L 0 8 Z" fill="#2877c7"></path>
+          </marker>
+          <marker id="fleche-critique" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto" markerUnits="strokeWidth">
+            <path d="M 0 0 L 8 4 L 0 8 Z" fill="#b42318"></path>
+          </marker>
+        </defs>
+      </svg>
+    </div>
+  </main>
+
+  <dialog id="dialogue-tache">
+    <form id="formulaire-tache">
+      <h2 id="titre-dialogue">Nouvelle activité</h2>
+
+      <label for="nom">Nom de l’activité</label>
+      <input id="nom" name="nom" type="text" maxlength="80" required autocomplete="off">
+
+      <label for="objet">Objet</label>
+      <textarea id="objet" name="objet" rows="2" maxlength="160"></textarea>
+
+      <label for="duree">Durée</label>
+      <input id="duree" name="duree" type="number" min="0.1" step="0.1" required inputmode="decimal">
+
+      <div class="actions">
+        <button id="annuler" type="button">Annuler</button>
+        <button id="valider-tache" type="submit">Créer</button>
+      </div>
+    </form>
+  </dialog>
+
+  <dialog id="dialogue-details">
+    <form id="formulaire-details">
+      <h2 id="titre-details"></h2>
+
+      <label for="description">Description</label>
+      <textarea id="description" name="description" rows="5"></textarea>
+
+      <div class="affectation-ressource">
+        <div class="ligne-affectation">
+          <div>
+            <label for="ressource-activite">Ressource</label>
+            <select id="ressource-activite"></select>
+          </div>
+          <div>
+            <label for="duree-ressource">Durée (<span id="unite-duree-ressource"></span>)</label>
+            <input id="duree-ressource" type="number" min="0.1" step="0.1" inputmode="decimal">
+          </div>
+        </div>
+
+        <div class="actions-affectation">
+          <button id="ajouter-affectation" type="button">Ajouter</button>
+          <button id="retirer-affectation" type="button" disabled>Retirer</button>
+        </div>
+
+        <div id="libelle-liste-affectations" class="libelle-objet">Ressources affectées</div>
+        <div id="liste-affectations" role="listbox" aria-labelledby="libelle-liste-affectations"></div>
+      </div>
+
+      <p class="calcul-en-attente"><strong>Coût total :</strong> <span id="cout-total-activite">0,00 €</span></p>
+
+      <div class="actions">
+        <button id="annuler-details" type="button">Annuler</button>
+        <button type="submit">Enregistrer</button>
+      </div>
+    </form>
+  </dialog>
+
+  <dialog id="dialogue-ressources">
+    <form id="formulaire-ressources">
+      <h2>Ressources du projet</h2>
+
+      <label for="liste-ressources">Couples Nom — Discipline</label>
+      <select id="liste-ressources" size="7" aria-label="Liste des ressources"></select>
+
+      <label for="nom-ressource">Nom</label>
+      <input id="nom-ressource" type="text" maxlength="80" autocomplete="off">
+
+      <label for="discipline-ressource">Discipline</label>
+      <input id="discipline-ressource" type="text" maxlength="80" autocomplete="off">
+
+      <label for="cout-unitaire-ressource">Coût un. (€)</label>
+      <input id="cout-unitaire-ressource" type="number" min="0" step="0.01" value="0" inputmode="decimal">
+
+      <div class="actions-ressources">
+        <button id="ajouter-ressource" type="button">Ajouter</button>
+        <button id="modifier-ressource" type="button" disabled>Modifier</button>
+        <button id="supprimer-ressource" type="button" disabled>Supprimer</button>
+      </div>
+
+      <div class="actions">
+        <button id="fermer-ressources" type="button">Fermer</button>
+      </div>
+    </form>
+  </dialog>
+
+  <dialog id="dialogue-calendrier">
+    <form id="formulaire-calendrier">
+      <h2>Calendrier du projet</h2>
+
+      <div class="parametre-calendrier">
+        <label for="mode-calendrier">Mode de calcul</label>
+        <select id="mode-calendrier">
+          <option value="ouvres">Jours ouvrés — samedi et dimanche exclus</option>
+          <option value="calendaires">Jours calendaires — week-ends compris</option>
+        </select>
+      </div>
+
+      <div class="parametre-calendrier">
+        <label for="calendrier-officiel">Jours fériés officiels</label>
+        <select id="calendrier-officiel">
+          <option value="france-metropolitaine">France métropolitaine</option>
+          <option value="aucun">Aucun calendrier officiel</option>
+        </select>
+      </div>
+
+      <label>Jours fériés officiels appliqués</label>
+      <ul id="liste-jours-feries-officiels"></ul>
+
+      <label for="jour-non-travaille">Autres jours non travaillés ajoutés au projet</label>
+      <div class="ajout-jour-non-travaille">
+        <input id="jour-non-travaille" type="date">
+        <button id="ajouter-jour-non-travaille" type="button">Ajouter</button>
+      </div>
+      <ul id="liste-jours-non-travailles"></ul>
+
+      <div class="actions">
+        <button id="annuler-calendrier" type="button">Annuler</button>
+        <button type="submit">Appliquer</button>
+      </div>
+    </form>
+  </dialog>
+
+  <dialog id="dialogue-verification">
+    <form method="dialog">
+      <h2>Vérification du projet</h2>
+      <p id="resume-verification" class="resume-verification"></p>
+
+      <div class="rapport-verification">
+        <h3 class="titre-erreurs">Erreurs bloquantes (<span id="nombre-erreurs">0</span>)</h3>
+        <ul id="liste-erreurs"></ul>
+
+        <h3 class="titre-avertissements">Avertissements (<span id="nombre-avertissements">0</span>)</h3>
+        <ul id="liste-avertissements"></ul>
+      </div>
+
+      <div class="actions">
+        <button type="submit">Fermer</button>
+      </div>
+    </form>
+  </dialog>
+
+  <dialog id="dialogue-affectations">
+    <form method="dialog">
+      <h2>Tableau des affectations</h2>
+      <div class="conteneur-tableau-affectations">
+        <table id="tableau-affectations">
+          <thead>
+            <tr>
+              <th scope="col">Ressource</th>
+              <th scope="col">Discipline</th>
+              <th scope="col">Activité</th>
+              <th scope="col" class="valeur-numerique">Durée</th>
+              <th scope="col" class="valeur-numerique">Coût un.</th>
+              <th scope="col" class="valeur-numerique">Coût affectation</th>
+            </tr>
+          </thead>
+          <tbody id="corps-tableau-affectations"></tbody>
+          <tfoot id="pied-tableau-affectations"></tfoot>
+        </table>
+      </div>
+
+      <div class="actions">
+        <button type="submit">Fermer</button>
+      </div>
+    </form>
+  </dialog>
+
+  <dialog id="dialogue-activites">
+    <form method="dialog">
+      <h2>Tableau des activités</h2>
+      <div class="conteneur-tableau-activites">
+        <table id="tableau-activites">
+          <thead>
+            <tr>
+              <th scope="col">Activité</th>
+              <th scope="col" class="valeur-numerique">Durée</th>
+              <th scope="col">Prédécesseurs</th>
+              <th scope="col">Successeurs</th>
+              <th scope="col">Début au plus tôt</th>
+              <th scope="col">Fin au plus tôt</th>
+              <th scope="col" class="valeur-numerique">Marge totale</th>
+              <th scope="col">Fin au plus tard</th>
+              <th scope="col" class="valeur-numerique">Coût total</th>
+            </tr>
+          </thead>
+          <tbody id="corps-tableau-activites"></tbody>
+        </table>
+      </div>
+
+      <div class="actions">
+        <button type="submit">Fermer</button>
+      </div>
+    </form>
+  </dialog>
+
+  <dialog id="dialogue-gantt">
+    <form method="dialog">
+      <h2>Diagramme de Gantt</h2>
+      <p class="legende-gantt">
+        <span>Activité</span>
+        <span class="legende-critique">Chemin critique</span>
+        <span class="legende-marge">Marge totale</span>
+        <span id="unite-temps-gantt" class="unite-temps-gantt">Unité de temps : —</span>
+      </p>
+      <div class="conteneur-gantt">
+        <div id="gantt"></div>
+      </div>
+
+      <div class="actions">
+        <button type="submit">Fermer</button>
+      </div>
+    </form>
+  </dialog>
+
+  <dialog id="dialogue-budget">
+    <form id="formulaire-budget">
+      <h2>Contrôle du budget mensuel</h2>
+
+      <div class="parametre-budget">
+        <div>
+          <label for="seuil-budget-mensuel">Seuil maximal par mois (€)</label>
+          <input id="seuil-budget-mensuel" type="number" min="0" step="0.01" inputmode="decimal" required>
+        </div>
+        <button type="submit">Calculer</button>
+      </div>
+
+      <p id="resume-budget"></p>
+      <div class="conteneur-tableau-budget">
+        <table id="tableau-budget">
+          <thead>
+            <tr>
+              <th scope="col">Mois</th>
+              <th scope="col" class="valeur-numerique">Seuil</th>
+              <th scope="col" class="valeur-numerique">Coût prévu</th>
+              <th scope="col" class="valeur-numerique">Écart</th>
+              <th scope="col">Situation</th>
+            </tr>
+          </thead>
+          <tbody id="corps-tableau-budget"></tbody>
+        </table>
+      </div>
+      <p id="avertissement-budget"></p>
+
+      <div class="actions">
+        <button id="fermer-budget" type="button">Fermer</button>
+      </div>
+    </form>
+  </dialog>
+
+  <dialog id="dialogue-mode-emploi">
+    <form method="dialog">
+      <h2>Mode d’emploi</h2>
+
+      <div class="contenu-mode-emploi">
+        <h3>Ouvrir ou démarrer un planning</h3>
+        <ul>
+          <li>Au démarrage, le dernier projet personnel mémorisé est repris ; sinon le planning reste vide.</li>
+          <li><strong>Ouvrir</strong> permet de choisir un fichier JSON personnel.</li>
+          <li><strong>Enregistrer</strong> demande une destination lorsque le navigateur le permet, puis réutilise ce fichier. Sinon, il annonce le nom de la copie téléchargée.</li>
+          <li><strong>Nouveau projet</strong> remplace le planning affiché à l’écran après confirmation.</li>
+        </ul>
+
+        <h3>Manipuler les activités</h3>
+        <ul>
+          <li>Double-cliquez dans le vide pour créer une activité.</li>
+          <li>Faites glisser une activité pour la déplacer.</li>
+          <li>Double-cliquez sur une activité pour modifier son nom, son objet et sa durée.</li>
+          <li>Faites un clic droit sur une activité pour saisir sa description et ses ressources. Sur iPad, maintenez le doigt sur l’activité.</li>
+          <li>Cliquez ou touchez brièvement une activité, puis utilisez <strong>Supprimer l’activité</strong>.</li>
+          <li>Utilisez l’icône calendrier pour fixer une date de début au plus tôt.</li>
+          <li>Le menu <strong>Unité</strong> propose Jour, Heure ou Semaine ; une semaine représente 5 jours ouvrés ou 7 jours calendaires.</li>
+        </ul>
+
+        <h3>Créer ou supprimer une liaison</h3>
+        <ul>
+          <li><strong>Liaison :</strong> faites glisser depuis le rond bleu d’une activité jusqu’au rond bleu de l’activité suivante.</li>
+          <li><strong>Suppression au clavier :</strong> sélectionnez la flèche, puis appuyez sur <strong>Suppr</strong> ou <strong>Retour arrière</strong> et confirmez. Ces touches restent sans effet sur la liaison pendant une saisie.</li>
+          <li><strong>Suppression sur iPad :</strong> touchez la flèche, puis utilisez <strong>Supprimer la liaison</strong> et confirmez.</li>
+        </ul>
+
+        <h3>Gérer les ressources</h3>
+        <ul>
+          <li><strong>Ressources</strong> ouvre le catalogue : renseignez le nom, la discipline et le coût unitaire, puis cliquez sur <strong>Ajouter</strong>.</li>
+          <li>Sélectionnez une ressource pour la <strong>modifier</strong> ou la <strong>supprimer</strong>. Une ressource déjà affectée ne peut pas être supprimée.</li>
+          <li><strong>Calendrier</strong> choisit les jours ouvrés ou calendaires et ajoute les dates non travaillées.</li>
+        </ul>
+
+        <h3>Affecter une ressource</h3>
+        <ul>
+          <li>Faites un clic droit sur l’activité, choisissez une ressource, saisissez sa charge dans l’unité du projet, puis cliquez sur <strong>Ajouter</strong> et enregistrez.</li>
+          <li>Les ressources affectées apparaissent sous forme de lignes tactiles. Sélectionnez une ligne pour modifier sa durée ou la retirer ; <strong>Enregistrer</strong> applique directement la saisie.</li>
+        </ul>
+
+        <h3>Contrôler le projet et les coûts</h3>
+        <ul>
+          <li><strong>Vérifier le projet</strong> affiche les erreurs bloquantes et analyse les affectations de ressources.</li>
+          <li><strong>Tableau des affectations</strong> récapitule les activités et les coûts par ressource affectée.</li>
+          <li><strong>Tableau des activités</strong> récapitule les dates, les marges et les dépendances du graphe.</li>
+          <li><strong>Diagramme de Gantt</strong> affiche le projet sur une échelle de temps, sans permettre de le modifier.</li>
+          <li><strong>Budget mensuel</strong> compare les coûts mensuels prévus du projet au budget mensuel saisi, quelle que soit l’unité de temps choisie.</li>
+        </ul>
+
+        <h3>Enregistrer et imprimer</h3>
+        <ul>
+          <li><strong>Enregistrer</strong> télécharge une copie JSON du projet.</li>
+          <li><strong>Lier le fichier de travail</strong> autorise l’écriture directe dans un fichier lorsque le navigateur le permet.</li>
+          <li><strong>Imprimer</strong> prépare le planning pour l’impression.</li>
+        </ul>
+      </div>
+
+      <div class="actions">
+        <button type="submit">Fermer</button>
+      </div>
+    </form>
+  </dialog>
+
+  <dialog id="dialogue-confirmation-suppression">
+    <form id="formulaire-confirmation-suppression">
+      <h2 id="titre-confirmation-suppression">Confirmer la suppression</h2>
+      <p id="message-confirmation-suppression"></p>
+
+      <div class="actions">
+        <button id="annuler-confirmation-suppression" type="button">Annuler</button>
+        <button id="confirmer-suppression" type="submit">Supprimer</button>
+      </div>
+    </form>
+  </dialog>
+
+  <script>
+    "use strict";
+
+    const zoneTravail = document.querySelector("#zone-travail");
+    const coucheLiaisons = document.querySelector("#couche-liaisons");
+    const dialogue = document.querySelector("#dialogue-tache");
+    const formulaire = document.querySelector("#formulaire-tache");
+    const titreDialogue = document.querySelector("#titre-dialogue");
+    const champNom = document.querySelector("#nom");
+    const champObjet = document.querySelector("#objet");
+    const champDuree = document.querySelector("#duree");
+    const champUnite = document.querySelector("#unite");
+    const boutonAnnuler = document.querySelector("#annuler");
+    const boutonValiderTache = document.querySelector("#valider-tache");
+    const boutonSupprimerActivite = document.querySelector("#supprimer-activite");
+    const boutonSupprimerLiaison = document.querySelector("#supprimer-liaison");
+    const boutonNouveauProjet = document.querySelector("#nouveau-projet");
+    const boutonEnregistrerProjet = document.querySelector("#enregistrer-projet");
+    const nomFichierActif = document.querySelector("#nom-fichier-actif");
+    const boutonLierFichierTravail = document.querySelector("#lier-fichier-travail");
+    const boutonVerifierProjet = document.querySelector("#verifier-projet");
+    const boutonBudgetMensuel = document.querySelector("#budget-mensuel");
+    const boutonImprimerProjet = document.querySelector("#imprimer-projet");
+    const boutonOuvrirModeEmploi = document.querySelector("#ouvrir-mode-emploi");
+    const boutonGererRessources = document.querySelector("#gerer-ressources");
+    const boutonOuvrirCalendrier = document.querySelector("#ouvrir-calendrier");
+    const fichierProjet = document.querySelector("#fichier-projet");
+    const dialogueDetails = document.querySelector("#dialogue-details");
+    const formulaireDetails = document.querySelector("#formulaire-details");
+    const titreDetails = document.querySelector("#titre-details");
+    const champDescription = document.querySelector("#description");
+    const boutonAnnulerDetails = document.querySelector("#annuler-details");
+    const champRessourceActivite = document.querySelector("#ressource-activite");
+    const champDureeRessource = document.querySelector("#duree-ressource");
+    const uniteDureeRessource = document.querySelector("#unite-duree-ressource");
+    const listeAffectations = document.querySelector("#liste-affectations");
+    const boutonAjouterAffectation = document.querySelector("#ajouter-affectation");
+    const boutonRetirerAffectation = document.querySelector("#retirer-affectation");
+    const coutTotalActivite = document.querySelector("#cout-total-activite");
+    const dialogueRessources = document.querySelector("#dialogue-ressources");
+    const listeRessources = document.querySelector("#liste-ressources");
+    const champNomRessource = document.querySelector("#nom-ressource");
+    const champDisciplineRessource = document.querySelector("#discipline-ressource");
+    const champCoutUnitaireRessource = document.querySelector("#cout-unitaire-ressource");
+    const boutonAjouterRessource = document.querySelector("#ajouter-ressource");
+    const boutonModifierRessource = document.querySelector("#modifier-ressource");
+    const boutonSupprimerRessource = document.querySelector("#supprimer-ressource");
+    const boutonFermerRessources = document.querySelector("#fermer-ressources");
+    const dialogueCalendrier = document.querySelector("#dialogue-calendrier");
+    const formulaireCalendrier = document.querySelector("#formulaire-calendrier");
+    const champModeCalendrier = document.querySelector("#mode-calendrier");
+    const champCalendrierOfficiel = document.querySelector("#calendrier-officiel");
+    const listeJoursFeriesOfficiels = document.querySelector("#liste-jours-feries-officiels");
+    const champJourNonTravaille = document.querySelector("#jour-non-travaille");
+    const boutonAjouterJourNonTravaille = document.querySelector("#ajouter-jour-non-travaille");
+    const listeJoursNonTravailles = document.querySelector("#liste-jours-non-travailles");
+    const boutonAnnulerCalendrier = document.querySelector("#annuler-calendrier");
+    const resumeRessources = document.querySelector("#resume-ressources");
+    const resumeProjetGlobal = document.querySelector("#resume-projet-global");
+    const boutonAfficherTableauAffectations = document.querySelector("#afficher-tableau-affectations");
+    const dialogueAffectations = document.querySelector("#dialogue-affectations");
+    const corpsTableauAffectations = document.querySelector("#corps-tableau-affectations");
+    const piedTableauAffectations = document.querySelector("#pied-tableau-affectations");
+    const boutonAfficherTableauActivites = document.querySelector("#afficher-tableau-activites");
+    const dialogueActivites = document.querySelector("#dialogue-activites");
+    const corpsTableauActivites = document.querySelector("#corps-tableau-activites");
+    const boutonAfficherGantt = document.querySelector("#afficher-gantt");
+    const dialogueGantt = document.querySelector("#dialogue-gantt");
+    const gantt = document.querySelector("#gantt");
+    const uniteTempsGantt = document.querySelector("#unite-temps-gantt");
+    const dialogueBudget = document.querySelector("#dialogue-budget");
+    const formulaireBudget = document.querySelector("#formulaire-budget");
+    const champSeuilBudgetMensuel = document.querySelector("#seuil-budget-mensuel");
+    const resumeBudget = document.querySelector("#resume-budget");
+    const corpsTableauBudget = document.querySelector("#corps-tableau-budget");
+    const avertissementBudget = document.querySelector("#avertissement-budget");
+    const boutonFermerBudget = document.querySelector("#fermer-budget");
+    const dialogueModeEmploi = document.querySelector("#dialogue-mode-emploi");
+    const dialogueConfirmationSuppression = document.querySelector("#dialogue-confirmation-suppression");
+    const formulaireConfirmationSuppression = document.querySelector("#formulaire-confirmation-suppression");
+    const titreConfirmationSuppression = document.querySelector("#titre-confirmation-suppression");
+    const messageConfirmationSuppression = document.querySelector("#message-confirmation-suppression");
+    const boutonAnnulerConfirmationSuppression = document.querySelector("#annuler-confirmation-suppression");
+    const boutonConfirmerSuppression = document.querySelector("#confirmer-suppression");
+    const dialogueVerification = document.querySelector("#dialogue-verification");
+    const resumeVerification = document.querySelector("#resume-verification");
+    const nombreErreurs = document.querySelector("#nombre-erreurs");
+    const nombreAvertissements = document.querySelector("#nombre-avertissements");
+    const listeErreurs = document.querySelector("#liste-erreurs");
+    const listeAvertissements = document.querySelector("#liste-avertissements");
+
+    const LARGEUR_TACHE = 200;
+    const DUREE_APPUI_LONG = 700;
+    const TOLERANCE_APPUI_LONG = 10;
+    const MILLISECONDES_PAR_MINUTE = 60 * 1000;
+    const MILLISECONDES_PAR_HEURE = 60 * MILLISECONDES_PAR_MINUTE;
+    const MILLISECONDES_PAR_JOUR = 24 * MILLISECONDES_PAR_HEURE;
+    const cacheJoursFeriesFrance = new Map();
+    const CLE_SAUVEGARDE_LOCALE = "ja-reseau-pert-pwa-sauvegarde-automatique-v1";
+    const CLE_CATALOGUE_RESSOURCES = "ja-reseau-pert-pwa-catalogue-ressources-v1";
+    const CLE_NOM_FICHIER_ACTIF = "ja-reseau-pert-pwa-nom-fichier-actif-v1";
+    const MESSAGE_DUREE_RESSOURCE = "La durée d’une ressource ne peut pas dépasser celle de l’activité. Augmentez la durée de l’activité ou modifiez l’affectation des ressources.";
+    let positionCreation = { x: 0, y: 0 };
+    let prochainIdentifiant = 1;
+    let liaisons = [];
+    let liaisonSelectionnee = null;
+    let activiteSelectionnee = null;
+    let tacheEnEdition = null;
+    let tacheDetails = null;
+    let affectationsDetails = [];
+    let affectationSelectionneeId = "";
+    let ressourcesProjet = [];
+    let seuilBudgetMensuel = 0;
+    let calendrierProjet = creerCalendrierParDefaut();
+    let joursNonTravaillesEdition = [];
+    let fichierTravailLie = null;
+    let ouvertureProjetEnCours = false;
+    let chargementInitialActif = true;
+    let ecritureFichierTravail = Promise.resolve();
+    let rafraichissementGraphiqueProgramme = 0;
+    let actionSuppressionConfirmee = null;
+    const observateurDimensionsTaches = typeof ResizeObserver === "function"
+      ? new ResizeObserver(() => programmerRafraichissementGraphique())
+      : null;
+
+    zoneTravail.addEventListener("dblclick", (evenement) => {
+      if (evenement.target !== zoneTravail) return;
+
+      const rectangle = zoneTravail.getBoundingClientRect();
+      positionCreation = {
+        x: evenement.clientX - rectangle.left,
+        y: evenement.clientY - rectangle.top
+      };
+
+      ouvrirFormulaireCreation();
+    });
+
+    boutonAnnuler.addEventListener("click", () => {
+      dialogue.close();
+    });
+
+    boutonAnnulerDetails.addEventListener("click", () => {
+      dialogueDetails.close();
+    });
+
+    [dialogue, dialogueDetails].forEach((fenetre) => {
+      fenetre.addEventListener("pointerdown", () => mettreFenetreAuPremierPlan(fenetre));
+      fenetre.addEventListener("close", () => {
+        fenetre.classList.remove("fenetre-flottante");
+        fenetre.style.removeProperty("left");
+        fenetre.style.removeProperty("top");
+        fenetre.style.removeProperty("z-index");
+      });
+    });
+
+    listeAffectations.addEventListener("click", selectionnerAffectationDansListe);
+    boutonAjouterAffectation.addEventListener("click", ajouterAffectation);
+    boutonRetirerAffectation.addEventListener("click", retirerAffectation);
+    activerCommandeTactile(boutonRetirerAffectation, retirerAffectation);
+
+    formulaireDetails.addEventListener("submit", (evenement) => {
+      evenement.preventDefault();
+      if (!tacheDetails) return;
+      if (affectationSelectionneeId && !modifierAffectation()) return;
+
+      tacheDetails.dataset.description = champDescription.value.trim();
+      tacheDetails.dataset.ressources = JSON.stringify(affectationsDetails);
+      afficherRessourcesTache(tacheDetails);
+      afficherCoutTotalTache(tacheDetails);
+      actualiserLiaisonsDe(tacheDetails);
+      sauvegarderProjetLocal();
+      dialogueDetails.close();
+    });
+
+    listeRessources.addEventListener("change", selectionnerRessourceDansListe);
+    boutonAjouterRessource.addEventListener("click", ajouterRessource);
+    boutonModifierRessource.addEventListener("click", modifierRessource);
+    boutonSupprimerRessource.addEventListener("click", supprimerRessource);
+    activerCommandeTactile(boutonSupprimerRessource, supprimerRessource);
+    boutonFermerRessources.addEventListener("click", () => dialogueRessources.close());
+
+    champUnite.addEventListener("change", actualiserUnite);
+
+    boutonSupprimerActivite.addEventListener("click", demanderSuppressionActivite);
+    boutonSupprimerLiaison.addEventListener("click", demanderSuppressionLiaison);
+    activerCommandeTactile(boutonSupprimerActivite, demanderSuppressionActivite);
+    activerCommandeTactile(boutonSupprimerLiaison, demanderSuppressionLiaison);
+    boutonNouveauProjet.addEventListener("click", creerNouveauProjet);
+    boutonEnregistrerProjet.addEventListener("click", enregistrerProjet);
+    boutonLierFichierTravail.addEventListener("click", lierFichierTravail);
+    boutonVerifierProjet.addEventListener("click", verifierProjet);
+    boutonBudgetMensuel.addEventListener("click", ouvrirControleBudget);
+    boutonAfficherTableauAffectations.addEventListener("click", ouvrirTableauAffectations);
+    dialogueAffectations.addEventListener("click", (evenement) => {
+      if (evenement.target === dialogueAffectations) dialogueAffectations.close();
+    });
+    boutonAfficherTableauActivites.addEventListener("click", ouvrirTableauActivites);
+    dialogueActivites.addEventListener("click", (evenement) => {
+      if (evenement.target === dialogueActivites) dialogueActivites.close();
+    });
+    boutonAfficherGantt.addEventListener("click", ouvrirDiagrammeGantt);
+    dialogueGantt.addEventListener("click", (evenement) => {
+      if (evenement.target === dialogueGantt) dialogueGantt.close();
+    });
+    formulaireBudget.addEventListener("submit", (evenement) => {
+      evenement.preventDefault();
+      calculerBudgetMensuel(true);
+    });
+    boutonFermerBudget.addEventListener("click", () => dialogueBudget.close());
+    dialogueBudget.addEventListener("click", (evenement) => {
+      if (evenement.target === dialogueBudget) dialogueBudget.close();
+    });
+    boutonImprimerProjet.addEventListener("click", () => window.print());
+    boutonOuvrirModeEmploi.addEventListener("click", () => dialogueModeEmploi.showModal());
+    dialogueModeEmploi.addEventListener("click", (evenement) => {
+      if (evenement.target === dialogueModeEmploi) dialogueModeEmploi.close();
+    });
+    formulaireConfirmationSuppression.addEventListener("submit", (evenement) => {
+      evenement.preventDefault();
+      confirmerSuppressionDemandee();
+    });
+    boutonAnnulerConfirmationSuppression.addEventListener("click", annulerSuppressionDemandee);
+    activerCommandeTactile(boutonConfirmerSuppression, confirmerSuppressionDemandee);
+    activerCommandeTactile(boutonAnnulerConfirmationSuppression, annulerSuppressionDemandee);
+    dialogueConfirmationSuppression.addEventListener("close", () => {
+      actionSuppressionConfirmee = null;
+    });
+    boutonGererRessources.addEventListener("click", ouvrirGestionRessources);
+    boutonOuvrirCalendrier.addEventListener("click", ouvrirCalendrierProjet);
+    boutonAjouterJourNonTravaille.addEventListener("click", ajouterJourNonTravailleEdition);
+    champCalendrierOfficiel.addEventListener("change", afficherJoursFeriesOfficiels);
+    formulaireCalendrier.addEventListener("submit", appliquerCalendrierProjet);
+    boutonAnnulerCalendrier.addEventListener("click", () => dialogueCalendrier.close());
+    dialogueCalendrier.addEventListener("click", (evenement) => {
+      if (evenement.target === dialogueCalendrier) dialogueCalendrier.close();
+    });
+    fichierProjet.addEventListener("change", ouvrirProjet);
+    window.addEventListener("beforeprint", preparerImpression);
+    window.addEventListener("resize", () => {
+      repositionnerFenetresActivites();
+      programmerRafraichissementGraphique();
+    });
+    window.addEventListener("pageshow", programmerRafraichissementGraphique);
+    document.fonts?.ready.then(programmerRafraichissementGraphique);
+    zoneTravail.parentElement.addEventListener("scroll", repositionnerFenetresActivites);
+
+    zoneTravail.addEventListener("click", (evenement) => {
+      if (evenement.target !== zoneTravail) return;
+      selectionnerLiaison(null);
+      selectionnerActivite(null);
+    });
+
+    document.addEventListener("keydown", (evenement) => {
+      if (evenement.key !== "Delete" && evenement.key !== "Backspace") return;
+      const cible = evenement.target;
+      const saisieEnCours = cible instanceof HTMLInputElement
+        || cible instanceof HTMLTextAreaElement
+        || cible instanceof HTMLSelectElement
+        || (cible instanceof HTMLElement && cible.isContentEditable);
+      if (dialogue.open || saisieEnCours) return;
+      if (!liaisonSelectionnee) return;
+
+      evenement.preventDefault();
+      demanderSuppressionLiaison();
+    });
+
+    function activerCommandeTactile(bouton, action) {
+      bouton.addEventListener("pointerup", (evenement) => {
+        if (evenement.pointerType === "mouse") return;
+        evenement.preventDefault();
+        evenement.stopPropagation();
+        action();
+      });
+    }
+
+    function actualiserDisponibiliteCommande(bouton, disponible) {
+      bouton.classList.toggle("commande-indisponible", !disponible);
+      bouton.setAttribute("aria-disabled", String(!disponible));
+    }
+
+    function ouvrirConfirmationSuppression(
+      message,
+      action,
+      titre = "Confirmer la suppression",
+      libelleConfirmation = "Supprimer"
+    ) {
+      if (dialogueConfirmationSuppression.open) return;
+      titreConfirmationSuppression.textContent = titre;
+      messageConfirmationSuppression.textContent = message;
+      boutonConfirmerSuppression.textContent = libelleConfirmation;
+      actionSuppressionConfirmee = action;
+      dialogueConfirmationSuppression.showModal();
+    }
+
+    function confirmerSuppressionDemandee() {
+      const action = actionSuppressionConfirmee;
+      actionSuppressionConfirmee = null;
+      if (dialogueConfirmationSuppression.open) dialogueConfirmationSuppression.close();
+      if (action) action();
+    }
+
+    function annulerSuppressionDemandee() {
+      actionSuppressionConfirmee = null;
+      if (dialogueConfirmationSuppression.open) dialogueConfirmationSuppression.close();
+    }
+
+    formulaire.addEventListener("submit", (evenement) => {
+      evenement.preventDefault();
+
+      const nom = champNom.value.trim();
+      const objet = champObjet.value.trim();
+      const duree = Number(champDuree.value);
+      if (!nom || !Number.isFinite(duree) || duree <= 0) return;
+
+      if (
+        tacheEnEdition
+        && lireAffectationsTache(tacheEnEdition).some((affectation) => affectation.duree > duree)
+      ) {
+        window.alert(MESSAGE_DUREE_RESSOURCE);
+        return;
+      }
+
+      if (tacheEnEdition) {
+        tacheEnEdition.dataset.nom = nom;
+        tacheEnEdition.dataset.objet = objet;
+        tacheEnEdition.dataset.duree = String(duree);
+        tacheEnEdition.querySelector(".nom-tache").textContent = nom;
+        tacheEnEdition.querySelector(".texte-objet").textContent = objet;
+        afficherDuree(tacheEnEdition);
+        actualiserLiaisonsDe(tacheEnEdition);
+        recalculerPlanning();
+      } else {
+        creerTache(nom, duree, positionCreation.x, positionCreation.y, { objet });
+      }
+
+      dialogue.close();
+    });
+
+    function ouvrirFormulaireCreation() {
+      if (dialogue.open) {
+        dialogue.focus();
+        return;
+      }
+      tacheEnEdition = null;
+      titreDialogue.textContent = "Nouvelle activité";
+      boutonValiderTache.textContent = "Créer";
+      formulaire.reset();
+      dialogue.classList.remove("fenetre-flottante");
+      dialogue.showModal();
+      champNom.focus();
+    }
+
+    function ouvrirFormulaireEdition(tache) {
+      if (dialogue.open) {
+        dialogue.focus();
+        return;
+      }
+      tacheEnEdition = tache;
+      titreDialogue.textContent = "Modifier l’activité";
+      boutonValiderTache.textContent = "Enregistrer";
+      champNom.value = tache.dataset.nom;
+      champObjet.value = tache.dataset.objet || "";
+      champDuree.value = tache.dataset.duree;
+      dialogue.classList.add("fenetre-flottante");
+      dialogue.show();
+      placerFenetreActivite(dialogue, tache);
+      champNom.focus();
+      champNom.select();
+    }
+
+    function ouvrirDetails(tache) {
+      if (dialogueDetails.open) {
+        dialogueDetails.focus();
+        return;
+      }
+      tacheDetails = tache;
+      titreDetails.textContent = tache.dataset.nom;
+      champDescription.value = tache.dataset.description || "";
+      affectationsDetails = lireAffectationsTache(tache).map((affectation) => ({ ...affectation }));
+      uniteDureeRessource.textContent = champUnite.value.trim() || "Un.";
+      champDureeRessource.value = "";
+      actualiserChoixRessourcesActivite();
+      actualiserListeAffectations();
+      dialogueDetails.classList.add("fenetre-flottante");
+      dialogueDetails.show();
+      placerFenetreActivite(dialogueDetails, tache);
+      if (!window.matchMedia("(pointer: coarse)").matches) champDescription.focus();
+    }
+
+    function mettreFenetreAuPremierPlan(fenetre) {
+      const autreFenetre = fenetre === dialogue ? dialogueDetails : dialogue;
+      fenetre.style.zIndex = "31";
+      if (autreFenetre.open) autreFenetre.style.zIndex = "30";
+    }
+
+    function repositionnerFenetresActivites() {
+      if (dialogue.open && tacheEnEdition) placerFenetreActivite(dialogue, tacheEnEdition);
+      if (dialogueDetails.open && tacheDetails) {
+        placerFenetreActivite(dialogueDetails, tacheDetails);
+      }
+    }
+
+    function placerFenetreActivite(fenetre, tache) {
+      const marge = 8;
+      const espace = 12;
+      const cadre = tache.getBoundingClientRect();
+      const largeur = fenetre.offsetWidth;
+      const hauteur = fenetre.offsetHeight;
+      const autreFenetre = fenetre === dialogue ? dialogueDetails : dialogue;
+      const autreCadre = autreFenetre.open && autreFenetre.classList.contains("fenetre-flottante")
+        ? autreFenetre.getBoundingClientRect()
+        : null;
+      const centrerVerticalement = limiter(
+        cadre.top + (cadre.height - hauteur) / 2,
+        marge,
+        window.innerHeight - hauteur - marge
+      );
+      const centrerHorizontalement = limiter(
+        cadre.left + (cadre.width - largeur) / 2,
+        marge,
+        window.innerWidth - largeur - marge
+      );
+      const positionGauche = { x: cadre.left - largeur - espace, y: centrerVerticalement };
+      const positionDroite = { x: cadre.right + espace, y: centrerVerticalement };
+      const positionDessous = { x: centrerHorizontalement, y: cadre.bottom + espace };
+      const positionDessus = { x: centrerHorizontalement, y: cadre.top - hauteur - espace };
+      const candidats = fenetre === dialogue
+        ? [positionGauche, positionDessous, positionDessus, positionDroite]
+        : [positionDroite, positionDessus, positionDessous, positionGauche];
+
+      const dansEcran = (position) => (
+        position.x >= marge
+        && position.y >= marge
+        && position.x + largeur <= window.innerWidth - marge
+        && position.y + hauteur <= window.innerHeight - marge
+      );
+      const chevauche = (position, rectangle) => rectangle && !(
+        position.x + largeur <= rectangle.left
+        || position.x >= rectangle.right
+        || position.y + hauteur <= rectangle.top
+        || position.y >= rectangle.bottom
+      );
+      const position = candidats.find((candidat) => (
+        dansEcran(candidat) && !chevauche(candidat, autreCadre)
+      )) || candidats.find(dansEcran) || {
+        x: limiter(cadre.right + espace, marge, window.innerWidth - largeur - marge),
+        y: limiter(cadre.top, marge, window.innerHeight - hauteur - marge)
+      };
+
+      fenetre.style.left = `${position.x}px`;
+      fenetre.style.top = `${position.y}px`;
+      mettreFenetreAuPremierPlan(fenetre);
+    }
+
+    function actualiserChoixRessourcesActivite(identifiantSelectionne = "") {
+      champRessourceActivite.replaceChildren();
+      const optionVide = document.createElement("option");
+      optionVide.value = "";
+      optionVide.textContent = ressourcesProjet.length
+        ? "Choisir une ressource"
+        : "Aucune ressource disponible";
+      champRessourceActivite.appendChild(optionVide);
+
+      [...ressourcesProjet]
+        .sort((a, b) => `${a.nom} ${a.discipline}`.localeCompare(
+          `${b.nom} ${b.discipline}`,
+          "fr",
+          { sensitivity: "base" }
+        ))
+        .forEach((ressource) => {
+          const option = document.createElement("option");
+          option.value = ressource.id;
+          option.textContent = `${ressource.nom} — ${ressource.discipline}`;
+          champRessourceActivite.appendChild(option);
+        });
+
+      champRessourceActivite.value = identifiantSelectionne;
+      boutonAjouterAffectation.disabled = ressourcesProjet.length === 0;
+    }
+
+    function actualiserListeAffectations(identifiantSelectionne = "") {
+      listeAffectations.replaceChildren();
+      if (!tacheDetails) return;
+      let coutTotal = 0;
+
+      affectationSelectionneeId = affectationsDetails.some((affectation) => (
+        affectation.ressourceId === identifiantSelectionne
+      )) ? identifiantSelectionne : "";
+
+      affectationsDetails.forEach((affectation) => {
+        const ressource = trouverRessource(affectation.ressourceId);
+        if (!ressource) return;
+        const bouton = document.createElement("button");
+        const coutAffectation = affectation.duree * ressource.coutUnitaire;
+        coutTotal += coutAffectation;
+        bouton.type = "button";
+        bouton.className = "affectation-liste-bouton";
+        bouton.dataset.ressourceId = affectation.ressourceId;
+        bouton.setAttribute("role", "option");
+        bouton.setAttribute("aria-selected", String(
+          affectation.ressourceId === affectationSelectionneeId
+        ));
+        bouton.classList.toggle(
+          "selectionnee",
+          affectation.ressourceId === affectationSelectionneeId
+        );
+        bouton.textContent = `${ressource.nom} — ${ressource.discipline} — Coût un. : ${formaterMontantEuro(ressource.coutUnitaire)} — Durée : ${formatDuree(affectation.duree)} (${champUnite.value.trim() || "Un."}) — Total : ${formaterMontantEuro(coutAffectation)}`;
+        listeAffectations.appendChild(bouton);
+      });
+
+      if (!listeAffectations.childElementCount) {
+        const messageVide = document.createElement("p");
+        messageVide.className = "liste-affectations-vide";
+        messageVide.textContent = "Aucune ressource affectée";
+        listeAffectations.appendChild(messageVide);
+      }
+      coutTotalActivite.textContent = formaterMontantEuro(coutTotal);
+      boutonRetirerAffectation.disabled = !affectationSelectionneeId;
+    }
+
+    function selectionnerAffectationDansListe(evenement) {
+      if (!tacheDetails) return;
+      const bouton = evenement.target.closest(".affectation-liste-bouton");
+      if (!bouton) return;
+      affectationSelectionneeId = bouton.dataset.ressourceId || "";
+      actualiserListeAffectations(affectationSelectionneeId);
+      const affectation = affectationsDetails.find((element) => (
+        element.ressourceId === affectationSelectionneeId
+      ));
+      boutonRetirerAffectation.disabled = !affectation;
+      if (!affectation) return;
+
+      champRessourceActivite.value = affectation.ressourceId;
+      champDureeRessource.value = String(affectation.duree);
+    }
+
+    function ajouterAffectation() {
+      if (!tacheDetails) return;
+      const saisie = lireSaisieAffectation();
+      if (!saisie) return;
+      if (affectationsDetails.some((element) => element.ressourceId === saisie.ressourceId)) {
+        window.alert("Cette ressource est déjà affectée à l’activité.");
+        return;
+      }
+
+      affectationsDetails.push(saisie);
+      actualiserListeAffectations(saisie.ressourceId);
+    }
+
+    function modifierAffectation() {
+      if (!tacheDetails) return false;
+      const ancienIdentifiant = affectationSelectionneeId;
+      const saisie = lireSaisieAffectation();
+      if (!ancienIdentifiant || !saisie) return false;
+      if (affectationsDetails.some((element) => (
+        element.ressourceId === saisie.ressourceId
+        && element.ressourceId !== ancienIdentifiant
+      ))) {
+        window.alert("Cette ressource est déjà affectée à l’activité.");
+        return false;
+      }
+
+      const index = affectationsDetails.findIndex((element) => (
+        element.ressourceId === ancienIdentifiant
+      ));
+      if (index < 0) return false;
+      affectationsDetails[index] = saisie;
+      actualiserListeAffectations(saisie.ressourceId);
+      return true;
+    }
+
+    function retirerAffectation() {
+      if (!tacheDetails || !affectationSelectionneeId) return;
+      const identifiant = affectationSelectionneeId;
+      affectationsDetails = affectationsDetails.filter((element) => (
+        element.ressourceId !== identifiant
+      ));
+      champDureeRessource.value = "";
+      actualiserChoixRessourcesActivite();
+      actualiserListeAffectations();
+    }
+
+    function lireSaisieAffectation() {
+      const ressourceId = champRessourceActivite.value;
+      const duree = Number(champDureeRessource.value);
+      if (!trouverRessource(ressourceId) || !Number.isFinite(duree) || duree <= 0) {
+        window.alert("Choisissez une ressource et indiquez une durée supérieure à zéro.");
+        return null;
+      }
+      if (tacheDetails && duree > Number(tacheDetails.dataset.duree)) {
+        window.alert(MESSAGE_DUREE_RESSOURCE);
+        return null;
+      }
+      return { ressourceId, duree };
+    }
+
+    function lireAffectationsTache(tache) {
+      try {
+        const donnees = JSON.parse(tache.dataset.ressources || "[]");
+        return Array.isArray(donnees) ? donnees : [];
+      } catch (erreur) {
+        return [];
+      }
+    }
+
+    function ouvrirGestionRessources() {
+      champNomRessource.value = "";
+      champDisciplineRessource.value = "";
+      champCoutUnitaireRessource.value = "0";
+      actualiserListeRessources();
+      dialogueRessources.showModal();
+      champNomRessource.focus();
+    }
+
+    function actualiserListeRessources(identifiantSelectionne = "") {
+      listeRessources.replaceChildren();
+
+      [...ressourcesProjet]
+        .sort((a, b) => `${a.nom} ${a.discipline}`.localeCompare(
+          `${b.nom} ${b.discipline}`,
+          "fr",
+          { sensitivity: "base" }
+        ))
+        .forEach((ressource) => {
+          const option = document.createElement("option");
+          option.value = ressource.id;
+          option.textContent = `${ressource.nom} — ${ressource.discipline} — ${formaterCoutUnitaire(ressource.coutUnitaire)} €/Un.`;
+          listeRessources.appendChild(option);
+        });
+
+      listeRessources.value = identifiantSelectionne;
+      const ressourceSelectionnee = trouverRessource(identifiantSelectionne);
+      boutonModifierRessource.disabled = !ressourceSelectionnee;
+      boutonSupprimerRessource.disabled = !ressourceSelectionnee;
+    }
+
+    function selectionnerRessourceDansListe() {
+      const ressource = trouverRessource(listeRessources.value);
+      boutonModifierRessource.disabled = !ressource;
+      boutonSupprimerRessource.disabled = !ressource;
+      if (!ressource) return;
+
+      champNomRessource.value = ressource.nom;
+      champDisciplineRessource.value = ressource.discipline;
+      champCoutUnitaireRessource.value = String(ressource.coutUnitaire);
+    }
+
+    function ajouterRessource() {
+      const valeurs = lireChampsRessource();
+      if (!valeurs) return;
+      if (ressourceExiste(valeurs.nom, valeurs.discipline)) {
+        window.alert("Ce couple Nom — Discipline existe déjà.");
+        return;
+      }
+
+      const ressource = { id: creerIdentifiantRessource(), ...valeurs };
+      ressourcesProjet.push(ressource);
+      enregistrerRessources();
+      actualiserListeRessources(ressource.id);
+    }
+
+    function modifierRessource() {
+      const ressource = trouverRessource(listeRessources.value);
+      const valeurs = lireChampsRessource();
+      if (!ressource || !valeurs) return;
+      if (ressourceExiste(valeurs.nom, valeurs.discipline, ressource.id)) {
+        window.alert("Ce couple Nom — Discipline existe déjà.");
+        return;
+      }
+
+      ressource.nom = valeurs.nom;
+      ressource.discipline = valeurs.discipline;
+      ressource.coutUnitaire = valeurs.coutUnitaire;
+      enregistrerRessources();
+      actualiserListeRessources(ressource.id);
+    }
+
+    function supprimerRessource() {
+      const ressource = trouverRessource(listeRessources.value);
+      if (!ressource) return;
+      const estAffectee = [...zoneTravail.querySelectorAll(".tache")].some((tache) => (
+        lireAffectationsTache(tache).some((affectation) => affectation.ressourceId === ressource.id)
+      ));
+      if (estAffectee) {
+        window.alert("Cette ressource est affectée à une activité et ne peut pas être supprimée.");
+        return;
+      }
+      ouvrirConfirmationSuppression(
+        `Supprimer la ressource « ${ressource.nom} — ${ressource.discipline} » ?`,
+        () => supprimerRessourceConfirmee(ressource.id)
+      );
+    }
+
+    function supprimerRessourceConfirmee(identifiantRessource) {
+      const ressource = trouverRessource(identifiantRessource);
+      if (!ressource) return;
+
+      ressourcesProjet = ressourcesProjet.filter((element) => element.id !== ressource.id);
+      champNomRessource.value = "";
+      champDisciplineRessource.value = "";
+      champCoutUnitaireRessource.value = "0";
+      enregistrerRessources();
+      actualiserListeRessources();
+    }
+
+    function lireChampsRessource() {
+      const nom = champNomRessource.value.trim();
+      const discipline = champDisciplineRessource.value.trim();
+      const coutUnitaire = Number(champCoutUnitaireRessource.value);
+      if (!nom || !discipline) {
+        window.alert("Renseignez le nom et la discipline.");
+        return null;
+      }
+      if (!Number.isFinite(coutUnitaire) || coutUnitaire < 0) {
+        window.alert("Le coût unitaire doit être un nombre positif ou nul.");
+        return null;
+      }
+      return { nom, discipline, coutUnitaire };
+    }
+
+    function formaterCoutUnitaire(coutUnitaire) {
+      return new Intl.NumberFormat("fr-FR", {
+        minimumFractionDigits: 0,
+        maximumFractionDigits: 2
+      }).format(coutUnitaire);
+    }
+
+    function formaterMontantEuro(montant) {
+      return new Intl.NumberFormat("fr-FR", {
+        style: "currency",
+        currency: "EUR",
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 2
+      }).format(montant);
+    }
+
+    function trouverRessource(id) {
+      return ressourcesProjet.find((ressource) => ressource.id === id);
+    }
+
+    function ressourceExiste(nom, discipline, identifiantIgnore = "") {
+      const cle = creerCleRessource(nom, discipline);
+      return ressourcesProjet.some((ressource) => (
+        ressource.id !== identifiantIgnore
+        && creerCleRessource(ressource.nom, ressource.discipline) === cle
+      ));
+    }
+
+    function creerCleRessource(nom, discipline) {
+      return `${nom.trim()}\u0000${discipline.trim()}`.toLocaleLowerCase("fr");
+    }
+
+    function creerIdentifiantRessource() {
+      let numero = 1;
+      while (trouverRessource(`r${numero}`)) numero += 1;
+      return `r${numero}`;
+    }
+
+    function enregistrerRessources() {
+      try {
+        localStorage.setItem(CLE_CATALOGUE_RESSOURCES, JSON.stringify(ressourcesProjet));
+      } catch (erreur) {
+        // Le catalogue reste utilisable si le navigateur refuse le stockage local.
+      }
+      zoneTravail.querySelectorAll(".tache").forEach(afficherCoutTotalTache);
+      if (dialogueDetails.open && tacheDetails) {
+        actualiserChoixRessourcesActivite(champRessourceActivite.value);
+        actualiserListeAffectations(affectationSelectionneeId);
+      }
+      sauvegarderProjetLocal();
+    }
+
+    function creerTache(nom, duree, x, y, options = {}) {
+      const tache = document.createElement("div");
+      tache.className = "tache";
+      tache.dataset.id = options.id === undefined
+        ? creerIdentifiantTacheUnique()
+        : String(options.id);
+      tache.dataset.nom = nom;
+      tache.dataset.objet = options.objet || "";
+      tache.dataset.description = options.description || "";
+      tache.dataset.ressources = JSON.stringify(options.ressources || []);
+      tache.innerHTML = `
+        <div class="date-exterieure date-debut">
+          <div class="ligne-date">
+            <button class="ouvrir-calendrier" type="button" aria-label="Choisir la date de début au plus tôt">
+              <span class="icone-calendrier" aria-hidden="true"></span>
+            </button>
+            <input class="debut-tot" type="date" aria-label="Début au plus tôt">
+          </div>
+        </div>
+        <div class="marge-totale">Marge : —</div>
+        <div class="ressources-exterieures" aria-label="Ressources affectées"></div>
+        <div class="cadre-tache">
+          <div class="entete-tache">
+            <button class="connecteur" type="button" title="Relier cette activité" aria-label="Relier cette activité à une autre"></button>
+            <div class="nom-tache"></div>
+          </div>
+          <div class="objet-tache">
+            <div class="libelle-objet">Objet :</div>
+            <div class="texte-objet"></div>
+          </div>
+        </div>
+        <div class="duree-tache"></div>
+        <div class="date-exterieure date-fin">
+          <div class="ligne-date">
+            <input class="fin-tard" type="date" aria-label="Fin au plus tard" readonly tabindex="-1">
+          </div>
+        </div>
+      `;
+
+      tache.dataset.duree = String(duree);
+      tache.dataset.contrainteDebut = options.contrainteDebut || "";
+      tache.querySelector(".nom-tache").textContent = nom;
+      tache.querySelector(".texte-objet").textContent = tache.dataset.objet;
+      afficherDuree(tache);
+      afficherRessourcesTache(tache);
+      afficherCoutTotalTache(tache);
+
+      const gaucheDemandee = options.positionExacte ? x : x - LARGEUR_TACHE / 2;
+      const hautDemande = options.positionExacte ? y : y - 41;
+      const gauche = limiter(gaucheDemandee, 0, zoneTravail.clientWidth - LARGEUR_TACHE);
+      tache.style.left = `${gauche}px`;
+      tache.style.top = `${Math.max(0, hautDemande)}px`;
+
+      activerDeplacement(tache);
+      activerOuvertureDetailsParAppuiLong(tache);
+      activerCreationLiaison(tache, tache.querySelector(".connecteur"));
+      const champDateDebut = tache.querySelector(".debut-tot");
+      champDateDebut.addEventListener("input", (evenement) => {
+        tache.dataset.contrainteDebut = evenement.target.value;
+        recalculerPlanning();
+        window.requestAnimationFrame(() => champDateDebut.blur());
+      });
+      tache.querySelector(".ouvrir-calendrier").addEventListener("click", () => {
+        if (typeof champDateDebut.showPicker === "function") {
+          champDateDebut.showPicker();
+        } else {
+          champDateDebut.focus();
+          champDateDebut.click();
+        }
+      });
+      tache.addEventListener("click", (evenement) => {
+        if (evenement.target.closest("input, button")) return;
+        selectionnerLiaison(null);
+        selectionnerActivite(tache);
+      });
+      tache.addEventListener("dblclick", (evenement) => {
+        if (evenement.target.closest("input, button")) return;
+        evenement.preventDefault();
+        evenement.stopPropagation();
+        ouvrirFormulaireEdition(tache);
+      });
+      tache.addEventListener("contextmenu", (evenement) => {
+        evenement.preventDefault();
+        selectionnerLiaison(null);
+        selectionnerActivite(tache);
+        ouvrirDetails(tache);
+      });
+      tache.addEventListener("pointerup", sauvegarderProjetLocal);
+      zoneTravail.appendChild(tache);
+      observateurDimensionsTaches?.observe(tache);
+      if (options.recalculer !== false) recalculerPlanning();
+      return tache;
+    }
+
+    function creerIdentifiantTacheUnique() {
+      const identifiantsUtilises = new Set(
+        [...zoneTravail.querySelectorAll(".tache")].map((tache) => tache.dataset.id)
+      );
+      while (identifiantsUtilises.has(String(prochainIdentifiant))) {
+        prochainIdentifiant += 1;
+      }
+      const identifiant = String(prochainIdentifiant);
+      prochainIdentifiant += 1;
+      return identifiant;
+    }
+
+    function formatDuree(duree) {
+      return Number.isInteger(duree) ? String(duree) : String(duree).replace(".", ",");
+    }
+
+    function afficherDuree(tache) {
+      const duree = Number(tache.dataset.duree);
+      const unite = champUnite.value.trim() || "Un.";
+      tache.querySelector(".duree-tache").textContent = `Durée : ${formatDuree(duree)} (${unite})`;
+    }
+
+    function afficherRessourcesTache(tache) {
+      const conteneur = tache.querySelector(".ressources-exterieures");
+      if (!conteneur) return;
+      conteneur.replaceChildren();
+      const unite = champUnite.value.trim() || "Un.";
+
+      lireAffectationsTache(tache).forEach((affectation) => {
+        const ressource = trouverRessource(affectation.ressourceId);
+        if (!ressource) return;
+        const ligne = document.createElement("div");
+        ligne.className = "ressource-exterieure";
+        ligne.textContent = `${ressource.nom} — ${ressource.discipline} : ${formatDuree(affectation.duree)} (${unite})`;
+        conteneur.appendChild(ligne);
+      });
+
+      const hauteurEntete = Math.max(25, conteneur.scrollHeight + 4);
+      tache.style.paddingTop = `${hauteurEntete}px`;
+    }
+
+    function calculerCoutTotalTache(tache) {
+      return lireAffectationsTache(tache).reduce((total, affectation) => {
+        const ressource = trouverRessource(affectation.ressourceId);
+        return ressource
+          ? total + affectation.duree * ressource.coutUnitaire
+          : total;
+      }, 0);
+    }
+
+    function afficherCoutTotalTache(tache) {
+      const conteneur = tache.querySelector(".cout-total-exterieur");
+      if (!conteneur) return;
+      conteneur.textContent = `Coût total : ${formaterMontantEuro(calculerCoutTotalTache(tache))}`;
+    }
+
+    function actualiserUnite() {
+      document.querySelectorAll(".tache").forEach((tache) => {
+        afficherDuree(tache);
+        afficherRessourcesTache(tache);
+        afficherCoutTotalTache(tache);
+      });
+      recalculerPlanning();
+    }
+
+    function activerDeplacement(tache) {
+      tache.addEventListener("pointerdown", (evenement) => {
+        if (evenement.button !== 0) return;
+        if (evenement.target.closest("input, button")) return;
+
+        evenement.preventDefault();
+        tache.setPointerCapture(evenement.pointerId);
+        const debutX = evenement.clientX;
+        const debutY = evenement.clientY;
+        const gaucheInitiale = tache.offsetLeft;
+        const hautInitial = tache.offsetTop;
+        let deplacementCommence = false;
+
+        function deplacer(evenementMouvement) {
+          const deplacementX = evenementMouvement.clientX - debutX;
+          const deplacementY = evenementMouvement.clientY - debutY;
+          if (!deplacementCommence) {
+            if (Math.hypot(deplacementX, deplacementY) <= TOLERANCE_APPUI_LONG) return;
+            deplacementCommence = true;
+            tache.classList.add("en-deplacement");
+          }
+          const nouvelleGauche = gaucheInitiale + deplacementX;
+          const nouveauHaut = hautInitial + deplacementY;
+
+          tache.style.left = `${limiter(nouvelleGauche, 0, zoneTravail.clientWidth - tache.offsetWidth)}px`;
+          tache.style.top = `${limiter(nouveauHaut, 0, zoneTravail.clientHeight - tache.offsetHeight)}px`;
+          actualiserLiaisonsDe(tache);
+          if (tache === tacheEnEdition || tache === tacheDetails) repositionnerFenetresActivites();
+        }
+
+        function nettoyerDeplacement() {
+          tache.classList.remove("en-deplacement");
+          tache.removeEventListener("pointermove", deplacer);
+          tache.removeEventListener("pointerup", terminer);
+          tache.removeEventListener("pointercancel", annuler);
+        }
+
+        function terminer() {
+          nettoyerDeplacement();
+          if (!deplacementCommence) {
+            selectionnerLiaison(null);
+            selectionnerActivite(tache);
+          }
+        }
+
+        function annuler() {
+          nettoyerDeplacement();
+        }
+
+        tache.addEventListener("pointermove", deplacer);
+        tache.addEventListener("pointerup", terminer);
+        tache.addEventListener("pointercancel", annuler);
+      });
+    }
+
+    function activerOuvertureDetailsParAppuiLong(tache) {
+      let minuterieAppuiLong = null;
+      let pointeurAppuiLong = null;
+      let departAppuiLong = null;
+
+      function annulerAppuiLong() {
+        window.clearTimeout(minuterieAppuiLong);
+        minuterieAppuiLong = null;
+        pointeurAppuiLong = null;
+        departAppuiLong = null;
+      }
+
+      tache.addEventListener("pointerdown", (evenement) => {
+        if (evenement.pointerType === "mouse" || evenement.button !== 0) return;
+        if (evenement.target.closest("input, button, .connecteur")) return;
+
+        annulerAppuiLong();
+        pointeurAppuiLong = evenement.pointerId;
+        departAppuiLong = { x: evenement.clientX, y: evenement.clientY };
+        minuterieAppuiLong = window.setTimeout(() => {
+          minuterieAppuiLong = null;
+          pointeurAppuiLong = null;
+          departAppuiLong = null;
+          selectionnerLiaison(null);
+          selectionnerActivite(tache);
+          ouvrirDetails(tache);
+        }, DUREE_APPUI_LONG);
+      });
+
+      tache.addEventListener("pointermove", (evenement) => {
+        if (evenement.pointerId !== pointeurAppuiLong || !departAppuiLong) return;
+        const deplacementX = evenement.clientX - departAppuiLong.x;
+        const deplacementY = evenement.clientY - departAppuiLong.y;
+        if (Math.hypot(deplacementX, deplacementY) > TOLERANCE_APPUI_LONG) {
+          annulerAppuiLong();
+        }
+      });
+
+      tache.addEventListener("pointerup", annulerAppuiLong);
+      tache.addEventListener("pointercancel", annulerAppuiLong);
+    }
+
+    function activerCreationLiaison(tache, connecteur) {
+      connecteur.addEventListener("pointerdown", (evenement) => {
+        if (evenement.button !== 0) return;
+
+        evenement.preventDefault();
+        evenement.stopPropagation();
+        selectionnerLiaison(null);
+
+        const apercu = creerLigne("liaison-apercu");
+        apercu.setAttribute("marker-end", "url(#fleche-selectionnee)");
+        coucheLiaisons.appendChild(apercu);
+
+        const cadre = tache.querySelector(".cadre-tache");
+        const departX = tache.offsetLeft + cadre.offsetLeft + connecteur.offsetLeft + connecteur.offsetWidth / 2;
+        const departY = tache.offsetTop + cadre.offsetTop + connecteur.offsetTop + connecteur.offsetHeight / 2;
+        placerLigne(apercu, departX, departY, departX, departY);
+
+        function dessiner(evenementMouvement) {
+          const rectangle = zoneTravail.getBoundingClientRect();
+          const x = evenementMouvement.clientX - rectangle.left;
+          const y = evenementMouvement.clientY - rectangle.top;
+          placerLigne(apercu, departX, departY, x, y);
+        }
+
+        function terminer(evenementFin) {
+          const elementVise = document.elementFromPoint(evenementFin.clientX, evenementFin.clientY);
+          const tacheCible = elementVise ? elementVise.closest(".tache") : null;
+
+          apercu.remove();
+          window.removeEventListener("pointermove", dessiner);
+          window.removeEventListener("pointerup", terminer);
+          window.removeEventListener("pointercancel", annuler);
+
+          if (tacheCible && tacheCible !== tache) creerLiaison(tache, tacheCible);
+        }
+
+        function annuler() {
+          apercu.remove();
+          window.removeEventListener("pointermove", dessiner);
+          window.removeEventListener("pointerup", terminer);
+          window.removeEventListener("pointercancel", annuler);
+        }
+
+        window.addEventListener("pointermove", dessiner);
+        window.addEventListener("pointerup", terminer);
+        window.addEventListener("pointercancel", annuler);
+      });
+    }
+
+    function creerLiaison(source, cible, recalculer = true) {
+      const existeDeja = liaisons.some((liaison) => liaison.source === source && liaison.cible === cible);
+      if (existeDeja) return;
+      if (creeraitCycle(source, cible)) {
+        window.alert("Cette liaison créerait un cycle dans le réseau.");
+        return;
+      }
+
+      const groupe = document.createElementNS("http://www.w3.org/2000/svg", "g");
+      const ligneVisible = creerLigne("liaison-visible");
+      const ligneCible = creerLigne("liaison-cible");
+      ligneVisible.setAttribute("marker-end", "url(#fleche)");
+      groupe.append(ligneVisible, ligneCible);
+      coucheLiaisons.appendChild(groupe);
+
+      const liaison = { source, cible, groupe, ligneVisible, ligneCible };
+      ligneCible.addEventListener("click", (evenement) => {
+        evenement.stopPropagation();
+
+        if (liaison === liaisonSelectionnee) {
+          demanderSuppressionLiaison();
+          return;
+        }
+
+        selectionnerActivite(null);
+        selectionnerLiaison(liaison);
+      });
+
+      liaisons.push(liaison);
+      actualiserLiaison(liaison);
+      if (recalculer) recalculerPlanning();
+    }
+
+    function creerLigne(classe) {
+      const ligne = document.createElementNS("http://www.w3.org/2000/svg", "line");
+      ligne.setAttribute("class", classe);
+      ligne.setAttribute("vector-effect", "non-scaling-stroke");
+      return ligne;
+    }
+
+    function placerLigne(ligne, x1, y1, x2, y2) {
+      ligne.setAttribute("x1", x1);
+      ligne.setAttribute("y1", y1);
+      ligne.setAttribute("x2", x2);
+      ligne.setAttribute("y2", y2);
+    }
+
+    function actualiserLiaison(liaison) {
+      const centreSource = centreTache(liaison.source);
+      const centreCible = centreTache(liaison.cible);
+      const cadreSource = liaison.source.querySelector(".cadre-tache");
+      const cadreCible = liaison.cible.querySelector(".cadre-tache");
+      const centresConfondus = centreSource.x === centreCible.x && centreSource.y === centreCible.y;
+      const depart = centresConfondus
+        ? { x: centreSource.x + cadreSource.offsetWidth / 2, y: centreSource.y }
+        : pointSurBord(liaison.source, centreCible);
+      const arrivee = centresConfondus
+        ? { x: centreCible.x - cadreCible.offsetWidth / 2, y: centreCible.y }
+        : pointSurBord(liaison.cible, centreSource);
+
+      placerLigne(liaison.ligneVisible, depart.x, depart.y, arrivee.x, arrivee.y);
+      placerLigne(liaison.ligneCible, depart.x, depart.y, arrivee.x, arrivee.y);
+    }
+
+    function actualiserLiaisonsDe(tache) {
+      liaisons.forEach((liaison) => {
+        if (liaison.source === tache || liaison.cible === tache) actualiserLiaison(liaison);
+      });
+    }
+
+    function programmerRafraichissementGraphique() {
+      if (rafraichissementGraphiqueProgramme) {
+        window.cancelAnimationFrame(rafraichissementGraphiqueProgramme);
+      }
+
+      rafraichissementGraphiqueProgramme = window.requestAnimationFrame(() => {
+        rafraichissementGraphiqueProgramme = window.requestAnimationFrame(() => {
+          liaisons.forEach(actualiserLiaison);
+          rafraichissementGraphiqueProgramme = 0;
+        });
+      });
+    }
+
+    function centreTache(tache) {
+      const cadre = tache.querySelector(".cadre-tache");
+      return {
+        x: tache.offsetLeft + cadre.offsetLeft + cadre.offsetWidth / 2,
+        y: tache.offsetTop + cadre.offsetTop + cadre.offsetHeight / 2
+      };
+    }
+
+    function pointSurBord(tache, pointVise) {
+      const cadre = tache.querySelector(".cadre-tache");
+      const centre = centreTache(tache);
+      const dx = pointVise.x - centre.x;
+      const dy = pointVise.y - centre.y;
+      const facteurX = dx === 0 ? Infinity : (cadre.offsetWidth / 2) / Math.abs(dx);
+      const facteurY = dy === 0 ? Infinity : (cadre.offsetHeight / 2) / Math.abs(dy);
+      const facteur = Math.min(facteurX, facteurY);
+
+      return {
+        x: centre.x + dx * facteur,
+        y: centre.y + dy * facteur
+      };
+    }
+
+    function selectionnerLiaison(liaison) {
+      const ancienneLiaison = liaisonSelectionnee;
+
+      if (ancienneLiaison) {
+        ancienneLiaison.groupe.classList.remove("liaison-selectionnee");
+      }
+
+      liaisonSelectionnee = liaison;
+      actualiserDisponibiliteCommande(boutonSupprimerLiaison, Boolean(liaisonSelectionnee));
+      if (ancienneLiaison) actualiserApparenceLiaison(ancienneLiaison);
+
+      if (liaison) {
+        liaison.groupe.classList.add("liaison-selectionnee");
+        actualiserApparenceLiaison(liaison);
+      }
+    }
+
+    function actualiserApparenceLiaison(liaison) {
+      let marqueur = "url(#fleche)";
+
+      if (liaison === liaisonSelectionnee) {
+        marqueur = "url(#fleche-selectionnee)";
+      } else if (liaison.groupe.classList.contains("liaison-critique")) {
+        marqueur = "url(#fleche-critique)";
+      }
+
+      liaison.ligneVisible.setAttribute("marker-end", marqueur);
+    }
+
+    function supprimerLiaisonSelectionnee() {
+      if (!liaisonSelectionnee) return;
+
+      liaisonSelectionnee.groupe.remove();
+      liaisons = liaisons.filter((liaison) => liaison !== liaisonSelectionnee);
+      liaisonSelectionnee = null;
+      actualiserDisponibiliteCommande(boutonSupprimerLiaison, false);
+      recalculerPlanning();
+    }
+
+    function demanderSuppressionLiaison() {
+      if (!liaisonSelectionnee) return;
+      ouvrirConfirmationSuppression("Supprimer cette liaison ?", supprimerLiaisonSelectionnee);
+    }
+
+    function selectionnerActivite(tache) {
+      if (activiteSelectionnee) activiteSelectionnee.classList.remove("selectionnee");
+      activiteSelectionnee = tache;
+      if (activiteSelectionnee) activiteSelectionnee.classList.add("selectionnee");
+      actualiserDisponibiliteCommande(boutonSupprimerActivite, Boolean(activiteSelectionnee));
+    }
+
+    function demanderSuppressionActivite() {
+      if (!activiteSelectionnee) return;
+
+      const tache = activiteSelectionnee;
+      ouvrirConfirmationSuppression(
+        `Supprimer l’activité « ${tache.dataset.nom} » ?`,
+        supprimerActiviteSelectionnee
+      );
+    }
+
+    function supprimerActiviteSelectionnee() {
+      if (!activiteSelectionnee) return;
+
+      const tache = activiteSelectionnee;
+
+      selectionnerLiaison(null);
+      liaisons = liaisons.filter((liaison) => {
+        const estAssociee = liaison.source === tache || liaison.cible === tache;
+        if (estAssociee) liaison.groupe.remove();
+        return !estAssociee;
+      });
+
+      if (tacheEnEdition === tache) {
+        if (dialogue.open) dialogue.close();
+        tacheEnEdition = null;
+      }
+      if (tacheDetails === tache) {
+        if (dialogueDetails.open) dialogueDetails.close();
+        tacheDetails = null;
+        affectationsDetails = [];
+      }
+
+      tache.remove();
+      selectionnerActivite(null);
+      recalculerPlanning();
+    }
+
+    function creeraitCycle(source, cible) {
+      const aVisiter = [cible];
+      const visites = new Set();
+
+      while (aVisiter.length) {
+        const tache = aVisiter.pop();
+        if (tache === source) return true;
+        if (visites.has(tache)) continue;
+
+        visites.add(tache);
+        liaisons.forEach((liaison) => {
+          if (liaison.source === tache) aVisiter.push(liaison.cible);
+        });
+      }
+
+      return false;
+    }
+
+    function recalculerPlanning() {
+      const taches = [...zoneTravail.querySelectorAll(".tache")];
+      const nombrePredecesseurs = new Map(taches.map((tache) => [tache, 0]));
+      const successeurs = new Map(taches.map((tache) => [tache, []]));
+      const predecesseurs = new Map(taches.map((tache) => [tache, []]));
+      const debutsTot = new Map();
+      const finsTot = new Map();
+      const ordre = [];
+
+      liaisons.forEach((liaison) => {
+        nombrePredecesseurs.set(liaison.cible, nombrePredecesseurs.get(liaison.cible) + 1);
+        successeurs.get(liaison.source).push(liaison.cible);
+        predecesseurs.get(liaison.cible).push(liaison.source);
+      });
+
+      const file = taches.filter((tache) => nombrePredecesseurs.get(tache) === 0);
+
+      while (file.length) {
+        const tache = file.shift();
+        ordre.push(tache);
+        const contrainte = lireDateLocale(tache.dataset.contrainteDebut);
+        const listePredecesseurs = predecesseurs.get(tache);
+        const finsPredecesseurs = listePredecesseurs.map((predecesseur) => finsTot.get(predecesseur));
+        let debutTot = null;
+
+        if (listePredecesseurs.length === 0) {
+          debutTot = contrainte;
+        } else if (finsPredecesseurs.every((date) => date instanceof Date)) {
+          debutTot = new Date(Math.max(...finsPredecesseurs.map((date) => date.getTime())));
+          if (contrainte && contrainte > debutTot) debutTot = contrainte;
+        }
+        if (debutTot) debutTot = ajusterDateAuCalendrier(debutTot, 1);
+
+        tache.dataset.debutTot = debutTot ? String(debutTot.getTime()) : "";
+        debutsTot.set(tache, debutTot);
+        const champDate = tache.querySelector(".debut-tot");
+        const dateAffichee = debutTot || contrainte;
+        champDate.value = dateAffichee ? formaterDateLocale(dateAffichee) : "";
+        champDate.classList.toggle("avec-contrainte", Boolean(contrainte));
+        const blocDebut = champDate.closest(".date-exterieure");
+        blocDebut.classList.toggle("contrainte-active", Boolean(contrainte));
+        champDate.title = contrainte
+          ? "Contrainte de début au plus tôt"
+          : "Date calculée — choisissez une date pour ajouter une contrainte";
+
+        const duree = Number(tache.dataset.duree);
+        const finTot = debutTot
+          ? ajouterDureeProjet(debutTot, duree)
+          : null;
+        finsTot.set(tache, finTot);
+        tache.dataset.finTot = finTot ? String(finTot.getTime()) : "";
+
+        successeurs.get(tache).forEach((successeur) => {
+          const nouveauNombre = nombrePredecesseurs.get(successeur) - 1;
+          nombrePredecesseurs.set(successeur, nouveauNombre);
+          if (nouveauNombre === 0) file.push(successeur);
+        });
+      }
+
+      const finsTerminales = taches
+        .filter((tache) => successeurs.get(tache).length === 0)
+        .map((tache) => finsTot.get(tache))
+        .filter((date) => date instanceof Date);
+      const finProjet = finsTerminales.length
+        ? new Date(Math.max(...finsTerminales.map((date) => date.getTime())))
+        : null;
+      const finsTard = new Map();
+      const debutsTard = new Map();
+
+      [...ordre].reverse().forEach((tache) => {
+        const listeSuccesseurs = successeurs.get(tache);
+        const debutsTardSuccesseurs = listeSuccesseurs.map((successeur) => debutsTard.get(successeur));
+        let finTard = null;
+
+        if (finsTot.get(tache) instanceof Date) {
+          if (listeSuccesseurs.length === 0) {
+            finTard = finProjet;
+          } else if (debutsTardSuccesseurs.every((date) => date instanceof Date)) {
+            finTard = new Date(Math.min(...debutsTardSuccesseurs.map((date) => date.getTime())));
+          }
+        }
+
+        const duree = Number(tache.dataset.duree);
+        const debutTard = finTard
+          ? soustraireDureeProjet(finTard, duree)
+          : null;
+        finsTard.set(tache, finTard);
+        debutsTard.set(tache, debutTard);
+        tache.dataset.finTard = finTard ? String(finTard.getTime()) : "";
+
+        const champFinTard = tache.querySelector(".fin-tard");
+        champFinTard.value = finTard ? formaterDateLocale(finTard) : "";
+
+        const debutTot = debutsTot.get(tache);
+        const margeEnMillisecondes = debutTot && debutTard
+          ? calculerDureeTravailEnMillisecondes(debutTot, debutTard)
+          : null;
+        tache.dataset.margeTotale = margeEnMillisecondes === null
+          ? ""
+          : String(margeEnMillisecondes);
+        tache.querySelector(".marge-totale").textContent = margeEnMillisecondes === null
+          ? "Marge : —"
+          : `Marge : ${formaterMarge(margeEnMillisecondes)}`;
+      });
+
+      taches.forEach((tache) => {
+        tache.classList.toggle("critique", estTacheCritique(tache));
+      });
+
+      liaisons.forEach((liaison) => {
+        const finSource = liaison.source.dataset.finTot;
+        const debutCible = liaison.cible.dataset.debutTot;
+        const liaisonCritique = estTacheCritique(liaison.source)
+          && estTacheCritique(liaison.cible)
+          && finSource !== ""
+          && debutCible !== ""
+          && Math.abs(Number(finSource) - Number(debutCible)) < 1;
+        liaison.groupe.classList.toggle("liaison-critique", liaisonCritique);
+        actualiserApparenceLiaison(liaison);
+      });
+
+      programmerRafraichissementGraphique();
+      sauvegarderProjetLocal();
+    }
+
+    function estTacheCritique(tache) {
+      return Boolean(
+        tache.dataset.debutTot
+        && tache.dataset.margeTotale !== ""
+        && Math.abs(Number(tache.dataset.margeTotale)) < 1
+      );
+    }
+
+    function formaterMarge(margeEnMillisecondes) {
+      const unite = champUnite.value.trim() || "Un.";
+      const valeur = margeEnMillisecondes / convertirDureeEnMillisecondes(1);
+      const valeurArrondie = Math.round(valeur * 100) / 100;
+      return `${formatDuree(valeurArrondie)} (${unite})`;
+    }
+
+    function formaterDureeAvecUnite(duree) {
+      const uniteSaisie = champUnite.value.trim() || "Un.";
+      const unite = uniteSaisie.toLocaleLowerCase("fr");
+      const pluriel = Math.abs(Number(duree)) !== 1;
+      if (["j", "jour", "jours"].includes(unite)) return `${formatDuree(duree)} ${pluriel ? "jours" : "jour"}`;
+      if (["h", "hr", "heure", "heures"].includes(unite)) return `${formatDuree(duree)} ${pluriel ? "heures" : "heure"}`;
+      if (["min", "mn", "minute", "minutes"].includes(unite)) return `${formatDuree(duree)} ${pluriel ? "minutes" : "minute"}`;
+      if (["sem", "semaine", "semaines"].includes(unite)) return `${formatDuree(duree)} ${pluriel ? "semaines" : "semaine"}`;
+      return `${formatDuree(duree)} ${uniteSaisie}`;
+    }
+
+    function convertirDureeEnMillisecondes(duree) {
+      const unite = champUnite.value.trim().toLocaleLowerCase("fr");
+
+      if (["min", "mn", "minute", "minutes"].includes(unite)) {
+        return duree * MILLISECONDES_PAR_MINUTE;
+      }
+
+      if (["h", "hr", "heure", "heures"].includes(unite)) {
+        return duree * MILLISECONDES_PAR_HEURE;
+      }
+
+      if (["sem", "semaine", "semaines"].includes(unite)) {
+        return duree * (calendrierProjet.mode === "ouvres" ? 5 : 7) * MILLISECONDES_PAR_JOUR;
+      }
+
+      return duree * MILLISECONDES_PAR_JOUR;
+    }
+
+    function lireDateLocale(valeur) {
+      if (!valeur) return null;
+      const parties = valeur.slice(0, 10).split("-").map(Number);
+      if (parties.length !== 3 || parties.some((partie) => !Number.isFinite(partie))) return null;
+      const date = new Date(parties[0], parties[1] - 1, parties[2]);
+      return Number.isNaN(date.getTime()) ? null : date;
+    }
+
+    function formaterDateLocale(date) {
+      const deuxChiffres = (nombre) => String(nombre).padStart(2, "0");
+      return [
+        date.getFullYear(),
+        "-",
+        deuxChiffres(date.getMonth() + 1),
+        "-",
+        deuxChiffres(date.getDate())
+      ].join("");
+    }
+
+    function creerCalendrierParDefaut() {
+      return {
+        mode: "ouvres",
+        calendrierOfficiel: "france-metropolitaine",
+        joursNonTravailles: []
+      };
+    }
+
+    function calculerDimanchePaques(annee) {
+      const a = annee % 19;
+      const b = Math.floor(annee / 100);
+      const c = annee % 100;
+      const d = Math.floor(b / 4);
+      const e = b % 4;
+      const f = Math.floor((b + 8) / 25);
+      const g = Math.floor((b - f + 1) / 3);
+      const h = (19 * a + b - d - g + 15) % 30;
+      const i = Math.floor(c / 4);
+      const k = c % 4;
+      const l = (32 + 2 * e + 2 * i - h - k) % 7;
+      const m = Math.floor((a + 11 * h + 22 * l) / 451);
+      const mois = Math.floor((h + l - 7 * m + 114) / 31) - 1;
+      const jour = ((h + l - 7 * m + 114) % 31) + 1;
+      return new Date(annee, mois, jour);
+    }
+
+    function obtenirJoursFeriesFrance(annee) {
+      if (cacheJoursFeriesFrance.has(annee)) return cacheJoursFeriesFrance.get(annee);
+      const paques = calculerDimanchePaques(annee);
+      const dateMobile = (decalage) => {
+        const date = new Date(paques.getTime());
+        date.setDate(date.getDate() + decalage);
+        return date;
+      };
+      const jours = [
+        { nom: "Jour de l’An", date: new Date(annee, 0, 1) },
+        { nom: "Lundi de Pâques", date: dateMobile(1) },
+        { nom: "Fête du Travail", date: new Date(annee, 4, 1) },
+        { nom: "Victoire 1945", date: new Date(annee, 4, 8) },
+        { nom: "Ascension", date: dateMobile(39) },
+        { nom: "Lundi de Pentecôte", date: dateMobile(50) },
+        { nom: "Fête nationale", date: new Date(annee, 6, 14) },
+        { nom: "Assomption", date: new Date(annee, 7, 15) },
+        { nom: "Toussaint", date: new Date(annee, 10, 1) },
+        { nom: "Armistice 1918", date: new Date(annee, 10, 11) },
+        { nom: "Noël", date: new Date(annee, 11, 25) }
+      ].map((jourFerie) => ({ ...jourFerie, valeur: formaterDateLocale(jourFerie.date) }));
+      cacheJoursFeriesFrance.set(annee, jours);
+      return jours;
+    }
+
+    function estJourTravaille(date) {
+      const cle = formaterDateLocale(date);
+      if (calendrierProjet.joursNonTravailles.includes(cle)) return false;
+      if (
+        calendrierProjet.calendrierOfficiel === "france-metropolitaine"
+        && obtenirJoursFeriesFrance(date.getFullYear()).some((jour) => jour.valeur === cle)
+      ) return false;
+      if (calendrierProjet.mode === "ouvres" && [0, 6].includes(date.getDay())) return false;
+      return true;
+    }
+
+    function ajusterDateAuCalendrier(date, sens = 1) {
+      const resultat = new Date(date.getTime());
+      while (!estJourTravaille(resultat)) {
+        resultat.setDate(resultat.getDate() + sens);
+        resultat.setHours(0, 0, 0, 0);
+      }
+      return resultat;
+    }
+
+    function ajouterDureeProjet(date, duree) {
+      let restant = convertirDureeEnMillisecondes(duree);
+      let courant = ajusterDateAuCalendrier(date, 1);
+
+      while (restant > 0.1) {
+        if (!estJourTravaille(courant)) {
+          courant = ajusterDateAuCalendrier(courant, 1);
+          continue;
+        }
+        const debutJour = new Date(courant.getFullYear(), courant.getMonth(), courant.getDate());
+        const finJour = new Date(courant.getFullYear(), courant.getMonth(), courant.getDate() + 1);
+        const longueurJour = finJour.getTime() - debutJour.getTime();
+        const disponible = ((finJour.getTime() - courant.getTime()) / longueurJour) * MILLISECONDES_PAR_JOUR;
+        if (restant < disponible - 0.1) {
+          return new Date(courant.getTime() + (restant / MILLISECONDES_PAR_JOUR) * longueurJour);
+        }
+        restant -= disponible;
+        courant = ajusterDateAuCalendrier(finJour, 1);
+      }
+      return courant;
+    }
+
+    function soustraireDureeProjet(date, duree) {
+      let restant = convertirDureeEnMillisecondes(duree);
+      let courant = new Date(date.getTime());
+
+      while (restant > 0.1) {
+        let reference = new Date(courant.getTime() - 1);
+        while (!estJourTravaille(reference)) {
+          reference = new Date(reference.getFullYear(), reference.getMonth(), reference.getDate() - 1, 23, 59, 59, 999);
+        }
+        const debutJour = new Date(reference.getFullYear(), reference.getMonth(), reference.getDate());
+        const finJour = new Date(reference.getFullYear(), reference.getMonth(), reference.getDate() + 1);
+        const longueurJour = finJour.getTime() - debutJour.getTime();
+        const finDisponible = Math.min(courant.getTime(), finJour.getTime());
+        const disponible = ((finDisponible - debutJour.getTime()) / longueurJour) * MILLISECONDES_PAR_JOUR;
+        if (restant <= disponible + 0.1) {
+          return new Date(finDisponible - (restant / MILLISECONDES_PAR_JOUR) * longueurJour);
+        }
+        restant -= disponible;
+        courant = debutJour;
+      }
+      return courant;
+    }
+
+    function calculerDureeTravailEnMillisecondes(debut, fin) {
+      if (!(debut instanceof Date) || !(fin instanceof Date) || fin <= debut) return 0;
+      let total = 0;
+      let jour = new Date(debut.getFullYear(), debut.getMonth(), debut.getDate());
+
+      while (jour < fin) {
+        const jourSuivant = new Date(jour.getFullYear(), jour.getMonth(), jour.getDate() + 1);
+        if (estJourTravaille(jour)) {
+          const debutPartie = Math.max(debut.getTime(), jour.getTime());
+          const finPartie = Math.min(fin.getTime(), jourSuivant.getTime());
+          if (finPartie > debutPartie) {
+            total += ((finPartie - debutPartie) / (jourSuivant.getTime() - jour.getTime())) * MILLISECONDES_PAR_JOUR;
+          }
+        }
+        jour = jourSuivant;
+      }
+      return total;
+    }
+
+    function ouvrirCalendrierProjet() {
+      champModeCalendrier.value = calendrierProjet.mode;
+      champCalendrierOfficiel.value = calendrierProjet.calendrierOfficiel;
+      champJourNonTravaille.value = "";
+      joursNonTravaillesEdition = [...calendrierProjet.joursNonTravailles];
+      afficherJoursFeriesOfficiels();
+      afficherJoursNonTravaillesEdition();
+      dialogueCalendrier.showModal();
+    }
+
+    function obtenirAnneesProjet() {
+      const annees = [];
+      zoneTravail.querySelectorAll(".tache").forEach((tache) => {
+        [tache.dataset.debutTot, tache.dataset.finTot].forEach((valeur) => {
+          if (!valeur || !Number.isFinite(Number(valeur))) return;
+          annees.push(new Date(Number(valeur)).getFullYear());
+        });
+        const contrainte = lireDateLocale(tache.dataset.contrainteDebut);
+        if (contrainte) annees.push(contrainte.getFullYear());
+      });
+      if (!annees.length) return [new Date().getFullYear()];
+      const premiere = Math.min(...annees);
+      const derniere = Math.max(...annees);
+      return Array.from({ length: derniere - premiere + 1 }, (_, index) => premiere + index);
+    }
+
+    function afficherJoursFeriesOfficiels() {
+      listeJoursFeriesOfficiels.replaceChildren();
+      if (champCalendrierOfficiel.value !== "france-metropolitaine") {
+        const vide = document.createElement("li");
+        vide.className = "liste-vide";
+        vide.textContent = "Aucun calendrier officiel appliqué.";
+        listeJoursFeriesOfficiels.appendChild(vide);
+        return;
+      }
+      const formatDate = new Intl.DateTimeFormat("fr-FR", { weekday: "long", day: "2-digit", month: "long", year: "numeric" });
+      obtenirAnneesProjet().flatMap(obtenirJoursFeriesFrance).forEach((jourFerie) => {
+        const ligne = document.createElement("li");
+        ligne.textContent = `${jourFerie.nom} — ${formatDate.format(jourFerie.date)}`;
+        listeJoursFeriesOfficiels.appendChild(ligne);
+      });
+    }
+
+    function ajouterJourNonTravailleEdition() {
+      const valeur = champJourNonTravaille.value;
+      const date = lireDateLocale(valeur);
+      if (!valeur || !date || formaterDateLocale(date) !== valeur) {
+        window.alert("Choisissez une date valide.");
+        return;
+      }
+      if (!joursNonTravaillesEdition.includes(valeur)) {
+        joursNonTravaillesEdition.push(valeur);
+        joursNonTravaillesEdition.sort();
+      }
+      champJourNonTravaille.value = "";
+      afficherJoursNonTravaillesEdition();
+    }
+
+    function afficherJoursNonTravaillesEdition() {
+      listeJoursNonTravailles.replaceChildren();
+      if (!joursNonTravaillesEdition.length) {
+        const vide = document.createElement("li");
+        vide.className = "liste-vide";
+        vide.textContent = "Aucune date particulière exclue.";
+        listeJoursNonTravailles.appendChild(vide);
+        return;
+      }
+      const formatDate = new Intl.DateTimeFormat("fr-FR", { weekday: "long", day: "2-digit", month: "long", year: "numeric" });
+      joursNonTravaillesEdition.forEach((valeur) => {
+        const ligne = document.createElement("li");
+        const libelle = document.createElement("span");
+        libelle.textContent = formatDate.format(lireDateLocale(valeur));
+        const supprimer = document.createElement("button");
+        supprimer.type = "button";
+        supprimer.textContent = "Retirer";
+        const retirerJourNonTravaille = () => {
+          joursNonTravaillesEdition = joursNonTravaillesEdition.filter((date) => date !== valeur);
+          afficherJoursNonTravaillesEdition();
+        };
+        supprimer.addEventListener("click", retirerJourNonTravaille);
+        activerCommandeTactile(supprimer, retirerJourNonTravaille);
+        ligne.append(libelle, supprimer);
+        listeJoursNonTravailles.appendChild(ligne);
+      });
+    }
+
+    function appliquerCalendrierProjet(evenement) {
+      evenement.preventDefault();
+      calendrierProjet = {
+        mode: champModeCalendrier.value === "calendaires" ? "calendaires" : "ouvres",
+        calendrierOfficiel: champCalendrierOfficiel.value === "aucun"
+          ? "aucun"
+          : "france-metropolitaine",
+        joursNonTravailles: [...joursNonTravaillesEdition].sort()
+      };
+      dialogueCalendrier.close();
+      recalculerPlanning();
+    }
+
+    function verifierProjet() {
+      const erreurs = [];
+      const avertissements = [];
+      const taches = [...zoneTravail.querySelectorAll(".tache")];
+      const ensembleTaches = new Set(taches);
+      const indexTaches = new Map(taches.map((tache, index) => [tache, index]));
+      const identifiantsTaches = new Set();
+      const identifiantsRessources = new Set();
+      const ressourcesParIdentifiant = new Map();
+      const occupationsParRessource = new Map();
+
+      ressourcesProjet.forEach((ressource) => {
+        const id = String(ressource.id || "").trim();
+        const nomComplet = `${ressource.nom || "Ressource sans nom"} — ${ressource.discipline || "discipline absente"}`;
+        if (!id) {
+          erreurs.push(`La ressource « ${nomComplet} » n’a pas d’identifiant interne.`);
+        } else if (identifiantsRessources.has(id)) {
+          erreurs.push(`L’identifiant interne de la ressource « ${nomComplet} » est utilisé plusieurs fois.`);
+        } else {
+          identifiantsRessources.add(id);
+          ressourcesParIdentifiant.set(id, ressource);
+        }
+
+        if (!ressource.nom?.trim() || !ressource.discipline?.trim()) {
+          erreurs.push(`La ressource « ${nomComplet} » doit avoir un nom et une discipline.`);
+        }
+        if (!Number.isFinite(Number(ressource.coutUnitaire)) || Number(ressource.coutUnitaire) < 0) {
+          erreurs.push(`Le coût unitaire de « ${nomComplet} » est invalide.`);
+        } else if (Number(ressource.coutUnitaire) === 0) {
+          avertissements.push(`La ressource « ${nomComplet} » a un coût unitaire égal à zéro.`);
+        }
+      });
+
+      taches.forEach((tache) => {
+        const nom = tache.dataset.nom || "Activité sans nom";
+        const id = String(tache.dataset.id || "").trim();
+        const dureeTache = Number(tache.dataset.duree);
+        if (!id) {
+          erreurs.push(`L’activité « ${nom} » n’a pas d’identifiant interne.`);
+        } else if (identifiantsTaches.has(id)) {
+          erreurs.push(`L’identifiant interne de l’activité « ${nom} » est utilisé plusieurs fois.`);
+        } else {
+          identifiantsTaches.add(id);
+        }
+        if (!Number.isFinite(dureeTache) || dureeTache <= 0) {
+          erreurs.push(`La durée de l’activité « ${nom} » doit être supérieure à zéro.`);
+        }
+
+        const contrainte = tache.dataset.contrainteDebut || "";
+        if (contrainte) {
+          const dateContrainte = lireDateLocale(contrainte);
+          if (!dateContrainte || formaterDateLocale(dateContrainte) !== contrainte.slice(0, 10)) {
+            erreurs.push(`La contrainte de date de l’activité « ${nom} » est invalide.`);
+          }
+        }
+
+        let affectations = [];
+        try {
+          affectations = JSON.parse(tache.dataset.ressources || "[]");
+          if (!Array.isArray(affectations)) throw new Error("Liste invalide");
+        } catch (erreur) {
+          erreurs.push(`La liste des ressources de l’activité « ${nom} » est illisible.`);
+          affectations = [];
+        }
+        if (affectations.length === 0) {
+          avertissements.push(`L’activité « ${nom} » ne possède aucune ressource affectée.`);
+        }
+
+        const affectationsVues = new Set();
+        affectations.forEach((affectation) => {
+          const ressourceId = String(affectation.ressourceId || "").trim();
+          const ressource = ressourcesParIdentifiant.get(ressourceId);
+          const duree = Number(affectation.duree);
+          if (!ressource) {
+            erreurs.push(`L’activité « ${nom} » utilise une ressource absente du catalogue.`);
+            return;
+          }
+          const nomRessource = `${ressource.nom} — ${ressource.discipline}`;
+          if (affectationsVues.has(ressourceId)) {
+            erreurs.push(`La ressource « ${nomRessource} » est affectée plusieurs fois à l’activité « ${nom} ».`);
+          }
+          affectationsVues.add(ressourceId);
+          if (!Number.isFinite(duree) || duree <= 0) {
+            erreurs.push(`La durée de « ${nomRessource} » dans l’activité « ${nom} » est invalide.`);
+          } else if (Number.isFinite(dureeTache) && duree > dureeTache) {
+            erreurs.push(`La durée de « ${nomRessource} » dépasse celle de l’activité « ${nom} ».`);
+          }
+
+          const debut = Number(tache.dataset.debutTot);
+          const fin = Number(tache.dataset.finTot);
+          if (
+            tache.dataset.debutTot
+            && tache.dataset.finTot
+            && Number.isFinite(debut)
+            && Number.isFinite(fin)
+            && Number.isFinite(duree)
+            && duree > 0
+            && Number.isFinite(dureeTache)
+            && dureeTache > 0
+          ) {
+            if (!occupationsParRessource.has(ressourceId)) occupationsParRessource.set(ressourceId, []);
+            occupationsParRessource.get(ressourceId).push({
+              tache,
+              debut,
+              fin,
+              charge: duree,
+              dureeActivite: dureeTache
+            });
+          }
+        });
+
+        const debutTexte = tache.dataset.debutTot || "";
+        const finTexte = tache.dataset.finTot || "";
+        if (Boolean(debutTexte) !== Boolean(finTexte)) {
+          erreurs.push(`Les dates calculées de l’activité « ${nom} » sont incomplètes.`);
+        } else if (debutTexte && finTexte) {
+          const debut = Number(debutTexte);
+          const fin = Number(finTexte);
+          if (!Number.isFinite(debut) || !Number.isFinite(fin)) {
+            erreurs.push(`Les dates calculées de l’activité « ${nom} » sont invalides.`);
+          } else if (fin < debut) {
+            erreurs.push(`L’activité « ${nom} » finit avant son début.`);
+          } else if (
+            Number.isFinite(dureeTache)
+            && Math.abs(
+              calculerDureeTravailEnMillisecondes(new Date(debut), new Date(fin))
+              - convertirDureeEnMillisecondes(dureeTache)
+            ) > 1
+          ) {
+            erreurs.push(`La durée et les dates calculées de l’activité « ${nom} » ne correspondent pas.`);
+          }
+        }
+      });
+
+      const liaisonsVues = new Set();
+      const successeurs = new Map(taches.map((tache) => [tache, []]));
+      const nombrePredecesseurs = new Map(taches.map((tache) => [tache, 0]));
+      liaisons.forEach((liaison) => {
+        if (!ensembleTaches.has(liaison.source) || !ensembleTaches.has(liaison.cible)) {
+          erreurs.push("Une liaison désigne une activité qui n’existe plus.");
+          return;
+        }
+        const nomSource = liaison.source.dataset.nom;
+        const nomCible = liaison.cible.dataset.nom;
+        if (liaison.source === liaison.cible) {
+          erreurs.push(`L’activité « ${nomSource} » possède une liaison vers elle-même.`);
+          return;
+        }
+        const cle = `${indexTaches.get(liaison.source)}>${indexTaches.get(liaison.cible)}`;
+        if (liaisonsVues.has(cle)) {
+          erreurs.push(`La liaison « ${nomSource} » vers « ${nomCible} » existe plusieurs fois.`);
+          return;
+        }
+        liaisonsVues.add(cle);
+        successeurs.get(liaison.source).push(liaison.cible);
+        nombrePredecesseurs.set(liaison.cible, nombrePredecesseurs.get(liaison.cible) + 1);
+
+        const finSource = Number(liaison.source.dataset.finTot);
+        const debutCible = Number(liaison.cible.dataset.debutTot);
+        if (
+          liaison.source.dataset.finTot
+          && liaison.cible.dataset.debutTot
+          && Number.isFinite(finSource)
+          && Number.isFinite(debutCible)
+          && finSource > debutCible + 1
+        ) {
+          erreurs.push(`La date de « ${nomCible} » ne respecte pas sa dépendance avec « ${nomSource} ».`);
+        }
+      });
+
+      const file = taches.filter((tache) => nombrePredecesseurs.get(tache) === 0);
+      let nombreTraite = 0;
+      while (file.length) {
+        const tache = file.shift();
+        nombreTraite += 1;
+        successeurs.get(tache).forEach((successeur) => {
+          const nouveauNombre = nombrePredecesseurs.get(successeur) - 1;
+          nombrePredecesseurs.set(successeur, nouveauNombre);
+          if (nouveauNombre === 0) file.push(successeur);
+        });
+      }
+      if (nombreTraite !== taches.length) erreurs.push("Le réseau contient un cycle de dépendances.");
+
+      occupationsParRessource.forEach((occupations, ressourceId) => {
+        const ressource = ressourcesParIdentifiant.get(ressourceId);
+        calculerBesoinsPersonnel(occupations).forEach((besoin) => {
+          const personnes = besoin.personnes;
+          const chargeMoyenne = Math.round(besoin.chargeMoyenneMaximale * 100) / 100;
+          avertissements.push(
+            `Ressource « ${ressource.nom} — ${ressource.discipline} » : besoin estimé de ${personnes} personnes du ${formaterDateCourte(besoin.debut)} au ${formaterDateCourte(besoin.fin)} (charge moyenne maximale : ${formatDuree(chargeMoyenne)} personne).`
+          );
+        });
+      });
+
+      afficherRapportVerification(erreurs, avertissements);
+    }
+
+    function calculerBesoinsPersonnel(occupations) {
+      const bornesInitiales = occupations.flatMap((occupation) => [
+        occupation.debut,
+        occupation.fin
+      ]);
+      const premiereBorne = Math.min(...bornesInitiales);
+      const derniereBorne = Math.max(...bornesInitiales);
+      let jour = new Date(new Date(premiereBorne).getFullYear(), new Date(premiereBorne).getMonth(), new Date(premiereBorne).getDate() + 1);
+      while (jour.getTime() < derniereBorne) {
+        bornesInitiales.push(jour.getTime());
+        jour = new Date(jour.getFullYear(), jour.getMonth(), jour.getDate() + 1);
+      }
+      const bornes = [...new Set(bornesInitiales)].sort((a, b) => a - b);
+      const besoins = [];
+
+      for (let index = 0; index < bornes.length - 1; index += 1) {
+        const debut = bornes[index];
+        const fin = bornes[index + 1];
+        if (!calculerDureeTravailEnMillisecondes(new Date(debut), new Date(fin))) continue;
+        const chargeMoyenne = occupations
+          .filter((occupation) => occupation.debut < fin && occupation.fin > debut)
+          .reduce((total, occupation) => (
+            total + occupation.charge / occupation.dureeActivite
+          ), 0);
+        const personnes = Math.ceil(chargeMoyenne - 1e-10);
+        if (personnes <= 1) continue;
+
+        const besoinPrecedent = besoins[besoins.length - 1];
+        if (
+          besoinPrecedent
+          && calculerDureeTravailEnMillisecondes(new Date(besoinPrecedent.fin), new Date(debut)) === 0
+          && besoinPrecedent.personnes === personnes
+        ) {
+          besoinPrecedent.fin = fin;
+          besoinPrecedent.chargeMoyenneMaximale = Math.max(
+            besoinPrecedent.chargeMoyenneMaximale,
+            chargeMoyenne
+          );
+        } else {
+          besoins.push({
+            debut,
+            fin,
+            personnes,
+            chargeMoyenneMaximale: chargeMoyenne
+          });
+        }
+      }
+
+      return besoins;
+    }
+
+    function formaterDateCourte(timestamp) {
+      return new Intl.DateTimeFormat("fr-FR").format(new Date(timestamp));
+    }
+
+    function afficherRapportVerification(erreurs, avertissements) {
+      nombreErreurs.textContent = String(erreurs.length);
+      nombreAvertissements.textContent = String(avertissements.length);
+      remplirListeVerification(listeErreurs, erreurs, "Aucune erreur bloquante.");
+      remplirListeVerification(listeAvertissements, avertissements, "Aucun avertissement.");
+      resumeVerification.classList.toggle("valide", erreurs.length === 0);
+      resumeVerification.classList.toggle("invalide", erreurs.length > 0);
+      resumeVerification.textContent = erreurs.length
+        ? `Projet incohérent : ${erreurs.length} erreur(s) à corriger et ${avertissements.length} avertissement(s).`
+        : `Projet cohérent : aucune erreur bloquante et ${avertissements.length} avertissement(s).`;
+      dialogueVerification.showModal();
+    }
+
+    function remplirListeVerification(liste, messages, messageVide) {
+      liste.replaceChildren();
+      const contenus = messages.length ? messages : [messageVide];
+      contenus.forEach((message) => {
+        const element = document.createElement("li");
+        element.textContent = message;
+        liste.appendChild(element);
+      });
+    }
+
+    async function enregistrerProjet() {
+      const contenu = JSON.stringify(construireProjet(), null, 2);
+      const nomSauvegarde = creerNomSauvegarde();
+
+      if (typeof window.showSaveFilePicker === "function") {
+        try {
+          if (!fichierTravailLie) {
+            fichierTravailLie = await window.showSaveFilePicker({
+              suggestedName: nomSauvegarde,
+              types: [{
+                description: "Projet de planning JSON",
+                accept: { "application/json": [".json"] }
+              }]
+            });
+          }
+
+          ouvertureProjetEnCours = true;
+          sauvegarderProjetLocal();
+          ouvertureProjetEnCours = false;
+          await ecrireFichierTravailLie();
+          boutonLierFichierTravail.title = `Fichier lié : ${fichierTravailLie.name}`;
+          definirNomFichierActif(fichierTravailLie.name);
+          window.alert(`Projet enregistré dans « ${fichierTravailLie.name} ».`);
+          return;
+        } catch (erreur) {
+          ouvertureProjetEnCours = false;
+          if (erreur?.name === "AbortError") return;
+          fichierTravailLie = null;
+          boutonLierFichierTravail.removeAttribute("title");
+          window.alert("L’enregistrement direct a échoué. Une copie va être téléchargée.");
+        }
+      } else {
+        const continuer = window.confirm(
+          `Ce navigateur ne peut pas choisir directement un dossier. La sauvegarde « ${nomSauvegarde} » va être téléchargée. Vérifiez le dossier de téléchargement configuré dans le navigateur. Continuer ?`
+        );
+        if (!continuer) return;
+      }
+
+      sauvegarderProjetLocal();
+      telechargerSauvegarde(contenu, nomSauvegarde);
+      definirNomFichierActif(nomSauvegarde);
+    }
+
+    function creerNomSauvegarde() {
+      const maintenant = new Date();
+      const deuxChiffres = (valeur) => String(valeur).padStart(2, "0");
+      const horodatage = [
+        deuxChiffres(maintenant.getDate()),
+        deuxChiffres(maintenant.getMonth() + 1),
+        `${deuxChiffres(maintenant.getHours())}h${deuxChiffres(maintenant.getMinutes())}`
+      ].join("-");
+      return `planning-${horodatage}.json`;
+    }
+
+    function telechargerSauvegarde(contenu, nomSauvegarde) {
+      const objetFichier = new Blob([contenu], { type: "application/json" });
+      const adresse = URL.createObjectURL(objetFichier);
+      const lien = document.createElement("a");
+      lien.href = adresse;
+      lien.download = nomSauvegarde;
+      document.body.appendChild(lien);
+      lien.click();
+      lien.remove();
+      window.setTimeout(() => URL.revokeObjectURL(adresse), 1000);
+    }
+
+    function creerNouveauProjet() {
+      const projetActuelNonVide = zoneTravail.querySelector(".tache") !== null;
+      if (projetActuelNonVide) {
+        ouvrirConfirmationSuppression(
+          "Créer un nouveau projet vide ? Vérifiez que le projet actuel est bien enregistré avant de continuer.",
+          creerNouveauProjetConfirme,
+          "Confirmer le nouveau projet",
+          "Créer"
+        );
+        return;
+      }
+      creerNouveauProjetConfirme();
+    }
+
+    async function creerNouveauProjetConfirme() {
+      let nouveauFichier = null;
+      if (typeof window.showSaveFilePicker === "function") {
+        try {
+          nouveauFichier = await window.showSaveFilePicker({
+            suggestedName: "nouveau-planning.json",
+            types: [{
+              description: "Projet de planning JSON",
+              accept: { "application/json": [".json"] }
+            }]
+          });
+        } catch (erreur) {
+          if (erreur?.name !== "AbortError") {
+            window.alert("Impossible de créer le nouveau fichier de travail.");
+          }
+          return;
+        }
+      }
+
+      await ecritureFichierTravail.catch(() => {});
+      chargementInitialActif = false;
+      ouvertureProjetEnCours = true;
+      fichierTravailLie = null;
+      boutonLierFichierTravail.removeAttribute("title");
+      ressourcesProjet = lireCatalogueRessourcesLocal();
+      seuilBudgetMensuel = 0;
+      calendrierProjet = creerCalendrierParDefaut();
+      champUnite.value = "j";
+      viderProjet();
+      ouvertureProjetEnCours = false;
+      definirNomFichierActif(nouveauFichier ? nouveauFichier.name : "Nouveau projet");
+      sauvegarderProjetLocal();
+
+      if (!nouveauFichier) {
+        window.alert("Le nouveau projet est prêt. Utilisez Enregistrer pour créer son fichier JSON.");
+        return;
+      }
+
+      try {
+        fichierTravailLie = nouveauFichier;
+        boutonLierFichierTravail.title = `Fichier lié : ${nouveauFichier.name}`;
+        await ecrireFichierTravailLie();
+      } catch (erreur) {
+        fichierTravailLie = null;
+        boutonLierFichierTravail.removeAttribute("title");
+        window.alert("Le projet est vide, mais son fichier n’a pas pu être créé. Utilisez Enregistrer.");
+      }
+    }
+
+    function construireProjet() {
+      const taches = [...zoneTravail.querySelectorAll(".tache")];
+      return {
+        format: "planning-reseau",
+        version: 1,
+        unite: champUnite.value.trim() || "Un.",
+        seuilBudgetMensuel,
+        calendrier: {
+          mode: calendrierProjet.mode,
+          calendrierOfficiel: calendrierProjet.calendrierOfficiel,
+          joursNonTravailles: [...calendrierProjet.joursNonTravailles]
+        },
+        ressources: ressourcesProjet.map((ressource) => ({ ...ressource })),
+        taches: taches.map((tache) => ({
+          id: tache.dataset.id,
+          nom: tache.dataset.nom,
+          objet: tache.dataset.objet || "",
+          description: tache.dataset.description || "",
+          ressources: lireAffectationsTache(tache),
+          duree: Number(tache.dataset.duree),
+          x: tache.offsetLeft,
+          y: tache.offsetTop,
+          contrainteDebut: tache.dataset.contrainteDebut || ""
+        })),
+        liaisons: liaisons.map((liaison) => ({
+          source: liaison.source.dataset.id,
+          cible: liaison.cible.dataset.id
+        }))
+      };
+    }
+
+    function sauvegarderProjetLocal() {
+      actualiserResumeRessources();
+      try {
+        localStorage.setItem(CLE_SAUVEGARDE_LOCALE, JSON.stringify(construireProjet()));
+      } catch (erreur) {
+        // Le planning reste utilisable si le navigateur refuse le stockage local.
+      }
+      programmerEcritureFichierTravail();
+    }
+
+    async function lierFichierTravail() {
+      if (typeof window.showOpenFilePicker !== "function") {
+        window.alert("Ce navigateur ne permet pas la liaison directe. Utilisez les boutons Ouvrir et Enregistrer.");
+        return;
+      }
+
+      try {
+        const [fichier] = await window.showOpenFilePicker({
+          multiple: false,
+          types: [{
+            description: "Projet de planning JSON",
+            accept: { "application/json": [".json"] }
+          }]
+        });
+        const contenu = await (await fichier.getFile()).text();
+        const projet = normaliserProjet(JSON.parse(contenu));
+        const projetActuelNonVide = zoneTravail.querySelector(".tache") !== null;
+
+        if (projetActuelNonVide) {
+          ouvrirConfirmationSuppression(
+            "Lier ce fichier remplacera le planning actuellement affiché. Continuer ?",
+            () => appliquerLiaisonFichierTravail(projet, fichier),
+            "Confirmer la liaison",
+            "Lier"
+          );
+          return;
+        }
+
+        await appliquerLiaisonFichierTravail(projet, fichier);
+      } catch (erreur) {
+        ouvertureProjetEnCours = false;
+        if (erreur?.name !== "AbortError") {
+          window.alert("Impossible de lier ce fichier de travail.");
+        }
+      }
+    }
+
+    async function appliquerLiaisonFichierTravail(projet, fichier) {
+      try {
+        chargementInitialActif = false;
+        fichierTravailLie = fichier;
+        ouvertureProjetEnCours = true;
+        afficherProjet(projet);
+        ouvertureProjetEnCours = false;
+        boutonLierFichierTravail.title = `Fichier lié : ${fichier.name}`;
+        definirNomFichierActif(fichier.name);
+        await ecrireFichierTravailLie();
+      } catch (erreur) {
+        ouvertureProjetEnCours = false;
+        window.alert("Impossible de lier ce fichier de travail.");
+      }
+    }
+
+    function programmerEcritureFichierTravail() {
+      if (!fichierTravailLie || ouvertureProjetEnCours) return;
+      ecritureFichierTravail = ecritureFichierTravail
+        .then(ecrireFichierTravailLie)
+        .catch(() => {
+          window.alert("Le fichier de travail n’a pas pu être mis à jour. Utilisez Enregistrer pour créer une sauvegarde.");
+          fichierTravailLie = null;
+          boutonLierFichierTravail.removeAttribute("title");
+        });
+    }
+
+    async function ecrireFichierTravailLie() {
+      if (!fichierTravailLie) return;
+      const fichierModifiable = await fichierTravailLie.createWritable();
+      await fichierModifiable.write(JSON.stringify(construireProjet(), null, 2));
+      await fichierModifiable.close();
+    }
+
+    function actualiserResumeRessources() {
+      const dureesTotales = new Map();
+
+      zoneTravail.querySelectorAll(".tache").forEach((tache) => {
+        lireAffectationsTache(tache).forEach((affectation) => {
+          const total = (dureesTotales.get(affectation.ressourceId) || 0) + Number(affectation.duree);
+          dureesTotales.set(affectation.ressourceId, Number(total.toFixed(10)));
+        });
+      });
+
+      const unite = champUnite.value.trim() || "Un.";
+      const ressourcesUtilisees = ressourcesProjet
+        .filter((ressource) => dureesTotales.has(ressource.id))
+        .sort((a, b) => `${a.nom} ${a.discipline}`.localeCompare(
+          `${b.nom} ${b.discipline}`,
+          "fr",
+          { sensitivity: "base" }
+        ))
+        .map((ressource) => (
+          `${ressource.nom} — ${ressource.discipline} : ${formatDuree(dureesTotales.get(ressource.id))} (${unite})`
+        ));
+
+      actualiserResumeProjetGlobal();
+
+      const titre = document.createElement("strong");
+      titre.textContent = "Ressources utilisées :";
+
+      if (!ressourcesUtilisees.length) {
+        resumeRessources.replaceChildren(titre, " aucune");
+        return;
+      }
+
+      resumeRessources.replaceChildren(titre);
+      ressourcesUtilisees.forEach((texte) => {
+        const ligne = document.createElement("span");
+        ligne.className = "resume-ressource";
+        ligne.textContent = texte;
+        resumeRessources.appendChild(ligne);
+      });
+    }
+
+    function actualiserResumeProjetGlobal() {
+      const taches = [...zoneTravail.querySelectorAll(".tache")];
+      const coutTotal = taches.reduce(
+        (total, tache) => total + calculerCoutTotalTache(tache),
+        0
+      );
+      const datesCompletes = taches.length > 0 && taches.every((tache) => (
+        tache.dataset.debutTot
+        && tache.dataset.finTot
+        && Number.isFinite(Number(tache.dataset.debutTot))
+        && Number.isFinite(Number(tache.dataset.finTot))
+      ));
+      const titreDuree = document.createElement("strong");
+      const titreCout = document.createElement("strong");
+      titreDuree.textContent = "Durée totale :";
+      titreCout.textContent = "Coût total :";
+      let dureeEtDates = " non calculable";
+
+      if (datesCompletes) {
+        const debut = Math.min(...taches.map((tache) => Number(tache.dataset.debutTot)));
+        const fin = Math.max(...taches.map((tache) => Number(tache.dataset.finTot)));
+        const duree = Math.round(
+          (calculerDureeTravailEnMillisecondes(new Date(debut), new Date(fin))
+            / convertirDureeEnMillisecondes(1)) * 100
+        ) / 100;
+        const unite = champUnite.value.trim() || "Un.";
+        const formatDate = new Intl.DateTimeFormat("fr-FR");
+        dureeEtDates = ` ${formatDuree(duree)} ${unite} du ${formatDate.format(new Date(debut))} au ${formatDate.format(new Date(fin))}`;
+      }
+
+      resumeProjetGlobal.replaceChildren(
+        titreDuree,
+        dureeEtDates,
+        " — ",
+        titreCout,
+        ` ${formaterMontantEuro(coutTotal)}`
+      );
+    }
+
+    function ouvrirTableauAffectations() {
+      corpsTableauAffectations.replaceChildren();
+      piedTableauAffectations.replaceChildren();
+
+      const taches = [...zoneTravail.querySelectorAll(".tache")];
+      const unite = champUnite.value.trim() || "Un.";
+      let nombreAffectations = 0;
+      let dureeGenerale = 0;
+      let coutGeneral = 0;
+
+      [...ressourcesProjet]
+        .sort((a, b) => `${a.nom} ${a.discipline}`.localeCompare(
+          `${b.nom} ${b.discipline}`,
+          "fr",
+          { sensitivity: "base" }
+        ))
+        .forEach((ressource) => {
+          const affectations = [];
+
+          taches.forEach((tache) => {
+            lireAffectationsTache(tache)
+              .filter((affectation) => affectation.ressourceId === ressource.id)
+              .forEach((affectation) => affectations.push({ tache, affectation }));
+          });
+
+          if (!affectations.length) return;
+
+          affectations.sort((a, b) => String(a.tache.dataset.nom).localeCompare(
+            String(b.tache.dataset.nom),
+            "fr",
+            { sensitivity: "base" }
+          ));
+
+          let dureeRessource = 0;
+          let coutRessource = 0;
+
+          affectations.forEach(({ tache, affectation }) => {
+            const duree = Number(affectation.duree);
+            const cout = duree * Number(ressource.coutUnitaire);
+            const ligne = document.createElement("tr");
+
+            ajouterCelluleTableau(ligne, ressource.nom);
+            ajouterCelluleTableau(ligne, ressource.discipline);
+            ajouterCelluleTableau(ligne, tache.dataset.nom);
+            ajouterCelluleTableau(ligne, `${formatDuree(duree)} (${unite})`, "valeur-numerique");
+            ajouterCelluleTableau(ligne, formaterMontantEuro(ressource.coutUnitaire), "valeur-numerique");
+            ajouterCelluleTableau(ligne, formaterMontantEuro(cout), "valeur-numerique");
+            corpsTableauAffectations.appendChild(ligne);
+
+            nombreAffectations += 1;
+            dureeRessource += duree;
+            coutRessource += cout;
+          });
+
+          const ligneTotal = document.createElement("tr");
+          ligneTotal.className = "total-ressource";
+          const libelleTotal = ajouterCelluleTableau(
+            ligneTotal,
+            `Total ${ressource.nom} — ${ressource.discipline}`
+          );
+          libelleTotal.colSpan = 3;
+          ajouterCelluleTableau(ligneTotal, `${formatDuree(dureeRessource)} (${unite})`, "valeur-numerique");
+          ajouterCelluleTableau(ligneTotal, "", "valeur-numerique");
+          ajouterCelluleTableau(ligneTotal, formaterMontantEuro(coutRessource), "valeur-numerique");
+          corpsTableauAffectations.appendChild(ligneTotal);
+
+          dureeGenerale += dureeRessource;
+          coutGeneral += coutRessource;
+        });
+
+      if (!nombreAffectations) {
+        const ligneVide = document.createElement("tr");
+        const celluleVide = ajouterCelluleTableau(ligneVide, "Aucune ressource n’est actuellement affectée à une activité.", "aucune-affectation");
+        celluleVide.colSpan = 6;
+        corpsTableauAffectations.appendChild(ligneVide);
+      } else {
+        const ligneGenerale = document.createElement("tr");
+        const libelleGeneral = ajouterCelluleTableau(ligneGenerale, "Total général");
+        libelleGeneral.colSpan = 3;
+        ajouterCelluleTableau(ligneGenerale, `${formatDuree(dureeGenerale)} (${unite})`, "valeur-numerique");
+        ajouterCelluleTableau(ligneGenerale, "", "valeur-numerique");
+        ajouterCelluleTableau(ligneGenerale, formaterMontantEuro(coutGeneral), "valeur-numerique");
+        piedTableauAffectations.appendChild(ligneGenerale);
+      }
+
+      dialogueAffectations.showModal();
+    }
+
+    function ouvrirTableauActivites() {
+      recalculerPlanning();
+      corpsTableauActivites.replaceChildren();
+
+      const unite = champUnite.value.trim() || "Un.";
+      const formatDate = new Intl.DateTimeFormat("fr-FR");
+      const taches = [...zoneTravail.querySelectorAll(".tache")]
+        .sort((a, b) => {
+          const debutA = a.dataset.debutTot ? Number(a.dataset.debutTot) : Number.POSITIVE_INFINITY;
+          const debutB = b.dataset.debutTot ? Number(b.dataset.debutTot) : Number.POSITIVE_INFINITY;
+          if (debutA !== debutB) return debutA - debutB;
+          return String(a.dataset.nom).localeCompare(String(b.dataset.nom), "fr", { sensitivity: "base" });
+        });
+
+      const formaterDateCalculee = (valeur) => {
+        const temps = Number(valeur);
+        return valeur && Number.isFinite(temps) ? formatDate.format(new Date(temps)) : "—";
+      };
+
+      taches.forEach((tache) => {
+        const predecesseurs = liaisons
+          .filter((liaison) => liaison.cible === tache)
+          .map((liaison) => String(liaison.source.dataset.nom))
+          .sort((a, b) => a.localeCompare(b, "fr", { sensitivity: "base" }));
+        const successeurs = liaisons
+          .filter((liaison) => liaison.source === tache)
+          .map((liaison) => String(liaison.cible.dataset.nom))
+          .sort((a, b) => a.localeCompare(b, "fr", { sensitivity: "base" }));
+        const ligne = document.createElement("tr");
+        const margeEnMillisecondes = Number(tache.dataset.margeTotale);
+        const marge = tache.dataset.margeTotale && Number.isFinite(margeEnMillisecondes)
+          ? formaterMarge(margeEnMillisecondes)
+          : "—";
+
+        ajouterCelluleTableau(
+          ligne,
+          tache.dataset.nom,
+          estTacheCritique(tache) ? "nom-activite-critique" : ""
+        );
+        ajouterCelluleTableau(ligne, `${formatDuree(Number(tache.dataset.duree))} (${unite})`, "valeur-numerique");
+        ajouterCelluleTableau(ligne, predecesseurs.join(" ; ") || "—");
+        ajouterCelluleTableau(ligne, successeurs.join(" ; ") || "—");
+        ajouterCelluleTableau(ligne, formaterDateCalculee(tache.dataset.debutTot), "valeur-date");
+        ajouterCelluleTableau(ligne, formaterDateCalculee(tache.dataset.finTot), "valeur-date");
+        ajouterCelluleTableau(ligne, marge, "valeur-numerique");
+        ajouterCelluleTableau(ligne, formaterDateCalculee(tache.dataset.finTard), "valeur-date");
+        ajouterCelluleTableau(ligne, formaterMontantEuro(calculerCoutTotalTache(tache)), "valeur-numerique");
+        corpsTableauActivites.appendChild(ligne);
+      });
+
+      if (!taches.length) {
+        const ligneVide = document.createElement("tr");
+        const celluleVide = ajouterCelluleTableau(ligneVide, "Aucune activité dans le projet.", "aucune-affectation");
+        celluleVide.colSpan = 9;
+        corpsTableauActivites.appendChild(ligneVide);
+      }
+
+      dialogueActivites.showModal();
+    }
+
+    function ouvrirDiagrammeGantt() {
+      recalculerPlanning();
+      gantt.replaceChildren();
+
+      const taches = [...zoneTravail.querySelectorAll(".tache")]
+        .sort((a, b) => {
+          const debutA = a.dataset.debutTot ? Number(a.dataset.debutTot) : Number.POSITIVE_INFINITY;
+          const debutB = b.dataset.debutTot ? Number(b.dataset.debutTot) : Number.POSITIVE_INFINITY;
+          if (debutA !== debutB) return debutA - debutB;
+          return String(a.dataset.nom).localeCompare(String(b.dataset.nom), "fr", { sensitivity: "base" });
+        });
+      const tachesDatees = taches.filter((tache) => (
+        tache.dataset.debutTot
+        && tache.dataset.finTot
+        && Number.isFinite(Number(tache.dataset.debutTot))
+        && Number.isFinite(Number(tache.dataset.finTot))
+      ));
+
+      if (!taches.length) {
+        const ligneVide = document.createElement("div");
+        ligneVide.className = "aucune-affectation";
+        ligneVide.textContent = "Aucune activité dans le projet.";
+        gantt.appendChild(ligneVide);
+        dialogueGantt.showModal();
+        return;
+      }
+
+      const uniteGantt = champUnite.value.trim().toLocaleLowerCase("fr");
+      const millisecondesParUnite = ["sem", "semaine", "semaines"].includes(uniteGantt)
+        ? 7 * MILLISECONDES_PAR_JOUR
+        : convertirDureeEnMillisecondes(1);
+      const debutProjet = tachesDatees.length
+        ? Math.min(...tachesDatees.map((tache) => Number(tache.dataset.debutTot)))
+        : 0;
+      const finProjet = tachesDatees.length
+        ? Math.max(...tachesDatees.map((tache) => Number(tache.dataset.finTot)))
+        : debutProjet + millisecondesParUnite;
+      const etendueEnUnites = Math.max(1, (finProjet - debutProjet) / millisecondesParUnite);
+      const pixelsParUnite = etendueEnUnites <= 20
+        ? 34
+        : etendueEnUnites <= 60
+          ? 20
+          : etendueEnUnites <= 180
+            ? 10
+            : 6;
+      const largeurTemps = Math.max(700, Math.ceil(etendueEnUnites * pixelsParUnite));
+      const pasPossibles = [1, 2, 5, 7, 10, 14, 30, 60, 90, 180, 365];
+      const pasGraduation = pasPossibles.find((pas) => pas * pixelsParUnite >= 82)
+        || Math.ceil(82 / pixelsParUnite / 365) * 365;
+      const largeurPas = pasGraduation * pixelsParUnite;
+      const formatDate = new Intl.DateTimeFormat("fr-FR", millisecondesParUnite < MILLISECONDES_PAR_JOUR
+        ? { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" }
+        : { day: "2-digit", month: "2-digit", year: "numeric" });
+
+      gantt.style.setProperty("--largeur-temps-gantt", `${largeurTemps}px`);
+      gantt.style.setProperty("--pas-grille-gantt", `${largeurPas}px`);
+      uniteTempsGantt.textContent = `Unité de temps : ${champUnite.value.trim() || "Un."}`;
+
+      const periodesNonTravaillees = [];
+      if (tachesDatees.length) {
+        let jour = new Date(new Date(debutProjet).getFullYear(), new Date(debutProjet).getMonth(), new Date(debutProjet).getDate());
+        while (jour.getTime() < finProjet) {
+          const jourSuivant = new Date(jour.getFullYear(), jour.getMonth(), jour.getDate() + 1);
+          if (!estJourTravaille(jour)) {
+            const debutPeriode = Math.max(debutProjet, jour.getTime());
+            const finPeriode = Math.min(finProjet, jourSuivant.getTime());
+            periodesNonTravaillees.push({
+              left: ((debutPeriode - debutProjet) / millisecondesParUnite) * pixelsParUnite,
+              width: ((finPeriode - debutPeriode) / millisecondesParUnite) * pixelsParUnite,
+              date: formaterDateLocale(jour)
+            });
+          }
+          jour = jourSuivant;
+        }
+      }
+
+      const ajouterPeriodesNonTravaillees = (conteneur) => {
+        periodesNonTravaillees.forEach((periode) => {
+          const zone = document.createElement("span");
+          zone.className = "jour-non-travaille-gantt";
+          zone.style.left = `${periode.left}px`;
+          zone.style.width = `${periode.width}px`;
+          zone.title = `Jour non travaillé : ${periode.date}`;
+          conteneur.appendChild(zone);
+        });
+      };
+
+      const entete = document.createElement("div");
+      entete.className = "ligne-gantt entete-gantt";
+      const libelleEntete = document.createElement("div");
+      libelleEntete.className = "libelle-gantt";
+      libelleEntete.textContent = "Activités";
+      const echelle = document.createElement("div");
+      echelle.className = "echelle-gantt";
+      ajouterPeriodesNonTravaillees(echelle);
+
+      if (tachesDatees.length) {
+        for (let position = 0; position <= etendueEnUnites; position += pasGraduation) {
+          const graduation = document.createElement("span");
+          graduation.className = "graduation-gantt";
+          graduation.style.left = `${position * pixelsParUnite}px`;
+          graduation.textContent = formatDate.format(
+            new Date(debutProjet + position * millisecondesParUnite)
+          );
+          echelle.appendChild(graduation);
+        }
+      } else {
+        const graduation = document.createElement("span");
+        graduation.className = "graduation-gantt";
+        graduation.textContent = "Dates non calculables";
+        echelle.appendChild(graduation);
+      }
+      entete.append(libelleEntete, echelle);
+      gantt.appendChild(entete);
+
+      taches.forEach((tache) => {
+        const critique = estTacheCritique(tache);
+        const ligne = document.createElement("div");
+        ligne.className = "ligne-gantt";
+        const libelle = document.createElement("div");
+        libelle.className = `libelle-gantt${critique ? " critique" : ""}`;
+        libelle.textContent = tache.dataset.nom;
+        libelle.title = tache.dataset.nom;
+        const zoneTemps = document.createElement("div");
+        zoneTemps.className = "zone-temps-gantt";
+        ajouterPeriodesNonTravaillees(zoneTemps);
+
+        const debut = Number(tache.dataset.debutTot);
+        const fin = Number(tache.dataset.finTot);
+        if (tache.dataset.debutTot && tache.dataset.finTot && Number.isFinite(debut) && Number.isFinite(fin)) {
+          const barre = document.createElement("div");
+          barre.className = `barre-gantt${critique ? " critique" : ""}`;
+          barre.style.left = `${((debut - debutProjet) / millisecondesParUnite) * pixelsParUnite}px`;
+          barre.style.width = `${Math.max(3, ((fin - debut) / millisecondesParUnite) * pixelsParUnite)}px`;
+          barre.textContent = formaterDureeAvecUnite(Number(tache.dataset.duree));
+          barre.title = `${tache.dataset.nom} — du ${formatDate.format(new Date(debut))} au ${formatDate.format(new Date(fin))} — ${formaterDureeAvecUnite(Number(tache.dataset.duree))}`;
+          zoneTemps.appendChild(barre);
+
+          const finTard = Number(tache.dataset.finTard);
+          const margeEnMillisecondes = Number(tache.dataset.margeTotale);
+          if (
+            tache.dataset.finTard
+            && tache.dataset.margeTotale
+            && Number.isFinite(finTard)
+            && Number.isFinite(margeEnMillisecondes)
+            && margeEnMillisecondes > 0
+          ) {
+            const marge = document.createElement("div");
+            marge.className = "marge-gantt";
+            marge.style.left = `${((fin - debutProjet) / millisecondesParUnite) * pixelsParUnite}px`;
+            marge.style.width = `${Math.max(1, ((finTard - fin) / millisecondesParUnite) * pixelsParUnite)}px`;
+            marge.title = `Marge totale : ${formaterMarge(margeEnMillisecondes)}`;
+            zoneTemps.appendChild(marge);
+          }
+        } else {
+          const indication = document.createElement("span");
+          indication.className = "dates-indisponibles-gantt";
+          indication.textContent = "Dates non calculables";
+          zoneTemps.appendChild(indication);
+        }
+
+        ligne.append(libelle, zoneTemps);
+        gantt.appendChild(ligne);
+      });
+
+      dialogueGantt.showModal();
+    }
+
+    function ouvrirControleBudget() {
+      champSeuilBudgetMensuel.value = seuilBudgetMensuel > 0
+        ? String(seuilBudgetMensuel)
+        : "";
+      calculerBudgetMensuel(false);
+      dialogueBudget.showModal();
+      champSeuilBudgetMensuel.focus();
+    }
+
+    function calculerBudgetMensuel(enregistrerSeuil) {
+      const seuilSaisi = Number(champSeuilBudgetMensuel.value);
+      if (enregistrerSeuil) {
+        if (!Number.isFinite(seuilSaisi) || seuilSaisi <= 0) {
+          window.alert("Le seuil mensuel doit être un montant supérieur à zéro.");
+          return;
+        }
+        seuilBudgetMensuel = seuilSaisi;
+        sauvegarderProjetLocal();
+      }
+
+      corpsTableauBudget.replaceChildren();
+      avertissementBudget.textContent = "";
+      const seuil = enregistrerSeuil ? seuilSaisi : seuilBudgetMensuel;
+      if (!(seuil > 0)) {
+        resumeBudget.textContent = "Indiquez un seuil mensuel, puis cliquez sur Calculer.";
+        ajouterLigneBudgetVide("Aucun seuil mensuel défini.");
+        return;
+      }
+
+      const coutsParMois = new Map();
+      let activitesSansDates = 0;
+      let coutSansDates = 0;
+      let premiereDate = Infinity;
+      let derniereDate = -Infinity;
+
+      zoneTravail.querySelectorAll(".tache").forEach((tache) => {
+        const debut = Number(tache.dataset.debutTot);
+        const fin = Number(tache.dataset.finTot);
+        const cout = calculerCoutTotalTache(tache);
+        if (
+          !tache.dataset.debutTot
+          || !tache.dataset.finTot
+          || !Number.isFinite(debut)
+          || !Number.isFinite(fin)
+          || fin <= debut
+        ) {
+          if (cout > 0) {
+            activitesSansDates += 1;
+            coutSansDates += cout;
+          }
+          return;
+        }
+
+        premiereDate = Math.min(premiereDate, debut);
+        derniereDate = Math.max(derniereDate, fin);
+        const dureeTravailActivite = calculerDureeTravailEnMillisecondes(
+          new Date(debut),
+          new Date(fin)
+        );
+        let debutMois = new Date(new Date(debut).getFullYear(), new Date(debut).getMonth(), 1);
+        while (debutMois.getTime() < fin) {
+          const finMois = new Date(debutMois.getFullYear(), debutMois.getMonth() + 1, 1);
+          const debutPartie = new Date(Math.max(debut, debutMois.getTime()));
+          const finPartie = new Date(Math.min(fin, finMois.getTime()));
+          const chevauchement = calculerDureeTravailEnMillisecondes(
+            debutPartie,
+            finPartie
+          );
+          if (chevauchement > 0 && dureeTravailActivite > 0) {
+            const cle = `${debutMois.getFullYear()}-${String(debutMois.getMonth() + 1).padStart(2, "0")}`;
+            const coutMois = cout * chevauchement / dureeTravailActivite;
+            coutsParMois.set(cle, (coutsParMois.get(cle) || 0) + coutMois);
+          }
+          debutMois = finMois;
+        }
+      });
+
+      if (Number.isFinite(premiereDate) && Number.isFinite(derniereDate)) {
+        let mois = new Date(
+          new Date(premiereDate).getFullYear(),
+          new Date(premiereDate).getMonth(),
+          1
+        );
+        while (mois.getTime() < derniereDate) {
+          const cle = `${mois.getFullYear()}-${String(mois.getMonth() + 1).padStart(2, "0")}`;
+          if (!coutsParMois.has(cle)) coutsParMois.set(cle, 0);
+          mois = new Date(mois.getFullYear(), mois.getMonth() + 1, 1);
+        }
+      }
+
+      if (!coutsParMois.size) {
+        resumeBudget.textContent = "Aucun coût daté ne peut être réparti mensuellement.";
+        ajouterLigneBudgetVide("Aucune activité datée avec un coût.");
+      } else {
+        const coutsMensuels = [...coutsParMois.entries()]
+          .sort(([a], [b]) => a.localeCompare(b))
+          .map(([cle, cout]) => {
+            const coutExactEnCentimes = cout * 100;
+            const coutEnCentimes = Math.floor(coutExactEnCentimes + 1e-9);
+            return {
+              cle,
+              coutEnCentimes,
+              reste: coutExactEnCentimes - coutEnCentimes
+            };
+          });
+        const coutTotalEnCentimes = Math.round(
+          [...coutsParMois.values()].reduce((total, cout) => total + cout, 0) * 100
+        );
+        let centimesARepartir = coutTotalEnCentimes - coutsMensuels.reduce(
+          (total, mois) => total + mois.coutEnCentimes,
+          0
+        );
+        [...coutsMensuels]
+          .sort((a, b) => b.reste - a.reste)
+          .forEach((mois) => {
+            if (centimesARepartir <= 0) return;
+            mois.coutEnCentimes += 1;
+            centimesARepartir -= 1;
+          });
+
+        let nombreDepassements = 0;
+        coutsMensuels.forEach(({ cle, coutEnCentimes }) => {
+          const cout = coutEnCentimes / 100;
+          const [annee, mois] = cle.split("-").map(Number);
+          const libelle = new Intl.DateTimeFormat("fr-FR", {
+            month: "long",
+            year: "numeric"
+          }).format(new Date(annee, mois - 1, 1));
+          const ecart = seuil - cout;
+          const depasse = ecart < -0.005;
+          if (depasse) nombreDepassements += 1;
+
+          const ligne = document.createElement("tr");
+          ligne.className = depasse ? "budget-depasse" : "budget-conforme";
+          ajouterCelluleTableau(ligne, libelle);
+          ajouterCelluleTableau(ligne, formaterMontantEuro(seuil), "valeur-numerique");
+          ajouterCelluleTableau(ligne, formaterMontantEuro(cout), "valeur-numerique");
+          ajouterCelluleTableau(ligne, formaterMontantEuro(ecart), "valeur-numerique");
+          ajouterCelluleTableau(ligne, depasse ? "Dépassement" : "Conforme");
+          corpsTableauBudget.appendChild(ligne);
+        });
+
+        resumeBudget.textContent = nombreDepassements
+          ? `${nombreDepassements} mois dépasse(nt) le seuil fixé.`
+          : "Aucun dépassement du seuil mensuel.";
+      }
+
+      if (activitesSansDates) {
+        avertissementBudget.textContent = `${activitesSansDates} activité(s), représentant ${formaterMontantEuro(coutSansDates)}, n’ont pas de dates calculables et ne sont pas incluses.`;
+      }
+    }
+
+    function ajouterLigneBudgetVide(message) {
+      const ligne = document.createElement("tr");
+      const cellule = ajouterCelluleTableau(ligne, message, "aucune-affectation");
+      cellule.colSpan = 5;
+      corpsTableauBudget.appendChild(ligne);
+    }
+
+    function ajouterCelluleTableau(ligne, texte, classe = "") {
+      const cellule = document.createElement("td");
+      cellule.textContent = texte;
+      if (classe) cellule.className = classe;
+      ligne.appendChild(cellule);
+      return cellule;
+    }
+
+    function preparerImpression() {
+      const taches = [...zoneTravail.querySelectorAll(".tache")];
+      if (!taches.length) return;
+
+      const gauche = Math.min(...taches.map((tache) => tache.offsetLeft));
+      const haut = Math.min(...taches.map((tache) => tache.offsetTop));
+      const droite = Math.max(...taches.map((tache) => tache.offsetLeft + tache.offsetWidth));
+      const bas = Math.max(...taches.map((tache) => tache.offsetTop + tache.offsetHeight));
+      const largeurPlanning = Math.max(1, droite - gauche);
+      const hauteurPlanning = Math.max(1, bas - haut);
+      const largeurPage = 1047;
+      const hauteurPage = 718;
+      const margeInterieure = 18;
+      const echelle = Math.min(
+        1,
+        (largeurPage - 2 * margeInterieure) / largeurPlanning,
+        (hauteurPage - 2 * margeInterieure) / hauteurPlanning
+      );
+      const decalageX = (largeurPage - largeurPlanning * echelle) / 2 - gauche * echelle;
+      const decalageY = (hauteurPage - hauteurPlanning * echelle) / 2 - haut * echelle;
+
+      zoneTravail.style.setProperty("--impression-echelle", String(echelle));
+      zoneTravail.style.setProperty("--impression-x", `${decalageX}px`);
+      zoneTravail.style.setProperty("--impression-y", `${decalageY}px`);
+    }
+
+    async function ouvrirProjet() {
+      const fichier = fichierProjet.files[0];
+      if (!fichier) return;
+
+      try {
+        const contenu = await fichier.text();
+        const projet = normaliserProjet(JSON.parse(contenu));
+        const projetActuelNonVide = zoneTravail.querySelector(".tache") !== null;
+
+        if (projetActuelNonVide) {
+          ouvrirConfirmationSuppression(
+            "Ouvrir ce projet remplacera le planning actuellement affiché. Continuer ?",
+            () => appliquerOuvertureProjet(projet, fichier),
+            "Confirmer l’ouverture",
+            "Ouvrir"
+          );
+          return;
+        }
+
+        await appliquerOuvertureProjet(projet, fichier);
+      } catch (erreur) {
+        window.alert("Ce fichier ne contient pas un projet de planning valide.");
+      } finally {
+        fichierProjet.value = "";
+      }
+    }
+
+    async function appliquerOuvertureProjet(projet, fichier) {
+      try {
+        chargementInitialActif = false;
+        await ecritureFichierTravail.catch(() => {});
+        fichierTravailLie = null;
+        boutonLierFichierTravail.removeAttribute("title");
+        afficherProjet(projet);
+        definirNomFichierActif(fichier.name);
+      } catch (erreur) {
+        window.alert("Impossible d’ouvrir ce projet.");
+      }
+    }
+
+    function afficherProjet(projet) {
+      ressourcesProjet = projet.ressources.map((ressource) => ({ ...ressource }));
+      seuilBudgetMensuel = projet.seuilBudgetMensuel;
+      calendrierProjet = {
+        mode: projet.calendrier.mode,
+        calendrierOfficiel: projet.calendrier.calendrierOfficiel,
+        joursNonTravailles: [...projet.calendrier.joursNonTravailles]
+      };
+      viderProjet();
+      champUnite.value = projet.unite;
+      const tachesParIdentifiant = new Map();
+
+      projet.taches.forEach((donnees) => {
+        const tache = creerTache(donnees.nom, donnees.duree, donnees.x, donnees.y, {
+          id: donnees.id,
+          objet: donnees.objet,
+          description: donnees.description,
+          ressources: donnees.ressources,
+          contrainteDebut: donnees.contrainteDebut,
+          positionExacte: true,
+          recalculer: false
+        });
+        tachesParIdentifiant.set(donnees.id, tache);
+      });
+
+      projet.liaisons.forEach((donnees) => {
+        creerLiaison(
+          tachesParIdentifiant.get(donnees.source),
+          tachesParIdentifiant.get(donnees.cible),
+          false
+        );
+      });
+
+      prochainIdentifiant = 1;
+      while (tachesParIdentifiant.has(String(prochainIdentifiant))) prochainIdentifiant += 1;
+      actualiserUnite();
+      enregistrerRessources();
+    }
+
+    function chargerProjetInitial() {
+      try {
+        const sauvegardeLocale = localStorage.getItem(CLE_SAUVEGARDE_LOCALE);
+        if (sauvegardeLocale) {
+          const projetLocal = normaliserProjet(JSON.parse(sauvegardeLocale));
+          chargementInitialActif = false;
+          definirNomFichierActif(lireNomFichierActifLocal() || "Projet récupéré");
+          afficherProjet(projetLocal);
+          return;
+        }
+      } catch (erreur) {
+        // Le projet reste vide si la sauvegarde locale est illisible.
+      }
+
+      chargementInitialActif = false;
+      actualiserUnite();
+      actualiserResumeRessources();
+    }
+
+    function definirNomFichierActif(nom) {
+      const valeur = typeof nom === "string" && nom.trim() ? nom.trim() : "Aucun fichier";
+      nomFichierActif.textContent = valeur;
+      nomFichierActif.title = valeur;
+      try {
+        if (valeur === "Aucun fichier") localStorage.removeItem(CLE_NOM_FICHIER_ACTIF);
+        else localStorage.setItem(CLE_NOM_FICHIER_ACTIF, valeur);
+      } catch (erreur) {
+        // Le nom reste affiché si le navigateur refuse le stockage local.
+      }
+    }
+
+    function lireNomFichierActifLocal() {
+      try {
+        return localStorage.getItem(CLE_NOM_FICHIER_ACTIF) || "";
+      } catch (erreur) {
+        return "";
+      }
+    }
+
+    function normaliserProjet(donnees) {
+      if (
+        !donnees ||
+        donnees.format !== "planning-reseau" ||
+        donnees.version !== 1 ||
+        !Array.isArray(donnees.taches) ||
+        !Array.isArray(donnees.liaisons)
+      ) {
+        throw new Error("Format de projet invalide");
+      }
+
+      const ressources = normaliserRessources(donnees.ressources);
+      const identifiantsRessources = new Set(ressources.map((ressource) => ressource.id));
+      const identifiants = new Set();
+      const taches = donnees.taches.map((tache) => {
+        const id = String(tache.id);
+        const nom = typeof tache.nom === "string" ? tache.nom.trim() : "";
+        const objet = typeof tache.objet === "string" ? tache.objet.trim().slice(0, 160) : "";
+        const description = typeof tache.description === "string" ? tache.description.trim() : "";
+        const duree = Number(tache.duree);
+        const ressourcesAffectees = normaliserAffectationsRessources(
+          tache.ressources,
+          identifiantsRessources,
+          duree
+        );
+        const x = Number(tache.x);
+        const y = Number(tache.y);
+        const contrainteDebut = typeof tache.contrainteDebut === "string"
+          ? tache.contrainteDebut.slice(0, 10)
+          : "";
+
+        if (
+          !id ||
+          identifiants.has(id) ||
+          !nom ||
+          !Number.isFinite(duree) ||
+          duree <= 0 ||
+          !Number.isFinite(x) ||
+          !Number.isFinite(y) ||
+          (contrainteDebut && !lireDateLocale(contrainteDebut))
+        ) {
+          throw new Error("Activité invalide");
+        }
+
+        identifiants.add(id);
+        return {
+          id,
+          nom,
+          objet,
+          description,
+          ressources: ressourcesAffectees,
+          duree,
+          x,
+          y,
+          contrainteDebut
+        };
+      });
+
+      const liaisonsVues = new Set();
+      const successeurs = new Map(taches.map((tache) => [tache.id, []]));
+      const nombrePredecesseurs = new Map(taches.map((tache) => [tache.id, 0]));
+      const liaisonsNormalisees = donnees.liaisons.map((liaison) => {
+        const source = String(liaison.source);
+        const cible = String(liaison.cible);
+        const cle = `${source}>${cible}`;
+
+        if (
+          source === cible ||
+          !identifiants.has(source) ||
+          !identifiants.has(cible) ||
+          liaisonsVues.has(cle)
+        ) {
+          throw new Error("Liaison invalide");
+        }
+
+        liaisonsVues.add(cle);
+        successeurs.get(source).push(cible);
+        nombrePredecesseurs.set(cible, nombrePredecesseurs.get(cible) + 1);
+        return { source, cible };
+      });
+
+      const file = taches
+        .map((tache) => tache.id)
+        .filter((id) => nombrePredecesseurs.get(id) === 0);
+      let nombreTraite = 0;
+
+      while (file.length) {
+        const id = file.shift();
+        nombreTraite += 1;
+        successeurs.get(id).forEach((successeur) => {
+          const nouveauNombre = nombrePredecesseurs.get(successeur) - 1;
+          nombrePredecesseurs.set(successeur, nouveauNombre);
+          if (nouveauNombre === 0) file.push(successeur);
+        });
+      }
+
+      if (nombreTraite !== taches.length) throw new Error("Cycle dans le projet");
+
+      const uniteBrute = typeof donnees.unite === "string"
+        ? donnees.unite.trim().toLocaleLowerCase("fr")
+        : "";
+      const unite = ["h", "hr", "heure", "heures"].includes(uniteBrute)
+        ? "h"
+        : ["sem", "semaine", "semaines"].includes(uniteBrute)
+          ? "sem"
+          : "j";
+      const seuilBudgetMensuel = donnees.seuilBudgetMensuel === undefined
+        ? 0
+        : Number(donnees.seuilBudgetMensuel);
+      if (!Number.isFinite(seuilBudgetMensuel) || seuilBudgetMensuel < 0) {
+        throw new Error("Seuil budgétaire invalide");
+      }
+      const calendrierBrut = donnees.calendrier && typeof donnees.calendrier === "object"
+        ? donnees.calendrier
+        : creerCalendrierParDefaut();
+      const modeCalendrier = calendrierBrut.mode === "calendaires" ? "calendaires" : "ouvres";
+      const calendrierOfficiel = calendrierBrut.calendrierOfficiel === "aucun"
+        ? "aucun"
+        : "france-metropolitaine";
+      const joursNonTravailles = calendrierBrut.joursNonTravailles === undefined
+        ? []
+        : calendrierBrut.joursNonTravailles;
+      if (!Array.isArray(joursNonTravailles)) throw new Error("Calendrier invalide");
+      const joursNormalises = [...new Set(joursNonTravailles.map((valeur) => {
+        const date = typeof valeur === "string" ? lireDateLocale(valeur) : null;
+        if (
+          typeof valeur !== "string"
+          || !/^\d{4}-\d{2}-\d{2}$/.test(valeur)
+          || !date
+          || formaterDateLocale(date) !== valeur
+        ) {
+          throw new Error("Jour non travaillé invalide");
+        }
+        return valeur;
+      }))].sort();
+      return {
+        unite,
+        seuilBudgetMensuel,
+        calendrier: {
+          mode: modeCalendrier,
+          calendrierOfficiel,
+          joursNonTravailles: joursNormalises
+        },
+        ressources,
+        taches,
+        liaisons: liaisonsNormalisees
+      };
+    }
+
+    function normaliserAffectationsRessources(donnees, identifiantsRessources, dureeTache) {
+      if (donnees === undefined) return [];
+      if (!Array.isArray(donnees)) throw new Error("Affectations de ressources invalides");
+
+      const ressourcesVues = new Set();
+      return donnees.map((affectation) => {
+        const ressourceId = String(affectation.ressourceId || "").trim();
+        const duree = Number(affectation.duree);
+        if (
+          !identifiantsRessources.has(ressourceId)
+          || ressourcesVues.has(ressourceId)
+          || !Number.isFinite(duree)
+          || duree <= 0
+          || duree > dureeTache
+        ) {
+          throw new Error("Affectation de ressource invalide");
+        }
+
+        ressourcesVues.add(ressourceId);
+        return { ressourceId, duree };
+      });
+    }
+
+    function normaliserRessources(donnees) {
+      if (donnees === undefined) return [];
+      if (!Array.isArray(donnees)) throw new Error("Liste de ressources invalide");
+
+      const identifiants = new Set();
+      const couples = new Set();
+      return donnees.map((ressource) => {
+        const id = String(ressource.id || "").trim();
+        const nom = typeof ressource.nom === "string" ? ressource.nom.trim().slice(0, 80) : "";
+        const discipline = typeof ressource.discipline === "string"
+          ? ressource.discipline.trim().slice(0, 80)
+          : "";
+        const coutUnitaire = ressource.coutUnitaire === undefined
+          ? 0
+          : Number(ressource.coutUnitaire);
+        const cle = creerCleRessource(nom, discipline);
+
+        if (
+          !id
+          || !nom
+          || !discipline
+          || !Number.isFinite(coutUnitaire)
+          || coutUnitaire < 0
+          || identifiants.has(id)
+          || couples.has(cle)
+        ) {
+          throw new Error("Ressource invalide");
+        }
+
+        identifiants.add(id);
+        couples.add(cle);
+        return { id, nom, discipline, coutUnitaire };
+      });
+    }
+
+    function lireCatalogueRessourcesLocal() {
+      try {
+        const contenu = localStorage.getItem(CLE_CATALOGUE_RESSOURCES);
+        return contenu ? normaliserRessources(JSON.parse(contenu)) : [];
+      } catch (erreur) {
+        return [];
+      }
+    }
+
+    function fusionnerRessources(ressourcesDuProjet, catalogueLocal) {
+      const resultat = ressourcesDuProjet.map((ressource) => ({ ...ressource }));
+      const couples = new Set(resultat.map((ressource) => (
+        creerCleRessource(ressource.nom, ressource.discipline)
+      )));
+
+      catalogueLocal.forEach((ressource) => {
+        const cle = creerCleRessource(ressource.nom, ressource.discipline);
+        if (couples.has(cle)) return;
+
+        let id = ressource.id;
+        let numero = 1;
+        while (resultat.some((element) => element.id === id)) {
+          id = `r${numero++}`;
+        }
+        resultat.push({
+          id,
+          nom: ressource.nom,
+          discipline: ressource.discipline,
+          coutUnitaire: ressource.coutUnitaire
+        });
+        couples.add(cle);
+      });
+
+      return resultat;
+    }
+
+    function viderProjet() {
+      selectionnerLiaison(null);
+      selectionnerActivite(null);
+      liaisons.forEach((liaison) => liaison.groupe.remove());
+      liaisons = [];
+      zoneTravail.querySelectorAll(".tache").forEach((tache) => tache.remove());
+      prochainIdentifiant = 1;
+      recalculerPlanning();
+    }
+
+    function limiter(valeur, minimum, maximum) {
+      return Math.min(Math.max(valeur, minimum), maximum);
+    }
+
+    if ("serviceWorker" in navigator && ["http:", "https:"].includes(location.protocol)) {
+      window.addEventListener("load", () => {
+        navigator.serviceWorker.register("./service-worker.js", { scope: "./" })
+          .catch((erreur) => console.warn("Mode hors connexion indisponible.", erreur));
+      });
+    }
+
+    chargerProjetInitial();
+  </script>
+</body>
+</html>
