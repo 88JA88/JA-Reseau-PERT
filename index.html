@@ -584,6 +584,22 @@
       width: min(650px, calc(100vw - 32px));
     }
 
+    #dialogue-impression {
+      width: min(460px, calc(100vw - 32px));
+    }
+
+    .choix-impression {
+      display: grid;
+      gap: 8px;
+      margin: 14px 0;
+    }
+
+    .choix-impression label {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
     #dialogue-affectations,
     #dialogue-affectation-ressources {
       width: min(980px, calc(100vw - 32px));
@@ -1145,16 +1161,23 @@
       opacity: 0.45;
     }
 
-    @page {
+    @page impression-portrait {
+      size: 210mm 297mm;
+      margin: 10mm;
+    }
+
+    @page impression-paysage {
       size: 297mm 210mm;
       margin: 10mm;
+    }
+
+    #zone-impression-multipage {
+      display: none;
     }
 
     @media print {
       html,
       body {
-        width: 277mm !important;
-        height: 190mm !important;
         margin: 0 !important;
         overflow: visible !important;
         background: #fff;
@@ -1164,30 +1187,47 @@
         display: block;
       }
 
-      .barre-superieure {
+      .barre-superieure,
+      .cadre-travail,
+      dialog {
         display: none;
       }
 
-      .cadre-travail {
-        position: relative;
-        width: 277mm !important;
-        height: 190mm !important;
-        overflow: visible !important;
-        background: #fff;
-        break-inside: avoid;
-        page-break-inside: avoid;
+      #zone-impression-multipage {
+        display: block;
       }
 
-      #zone-travail {
-        position: absolute;
-        top: 0;
-        left: 0;
+      .feuille-impression {
+        position: relative;
+        overflow: hidden !important;
         background: #fff;
-        transform: translate(
-          var(--impression-x, 0),
-          var(--impression-y, 0)
-        ) scale(var(--impression-echelle, 1));
-        transform-origin: top left;
+        break-after: page;
+        page-break-after: always;
+      }
+
+      .feuille-impression:last-child {
+        break-after: auto;
+        page-break-after: auto;
+      }
+
+      .feuille-impression.portrait {
+        width: 190mm;
+        height: 277mm;
+        page: impression-portrait;
+      }
+
+      .feuille-impression.paysage {
+        width: 277mm;
+        height: 190mm;
+        page: impression-paysage;
+      }
+
+      .zone-impression-source {
+        position: absolute !important;
+        width: 2600px !important;
+        height: 1700px !important;
+        background: #fff !important;
+        transform: none !important;
       }
 
       .cadre-tache {
@@ -1305,6 +1345,26 @@
       </svg>
     </div>
   </main>
+
+  <div id="zone-impression-multipage" aria-hidden="true"></div>
+
+  <dialog id="dialogue-impression">
+    <form id="formulaire-impression">
+      <h2>Imprimer le planning</h2>
+      <p>Le planning sera réparti sur autant de pages A4 que nécessaire. Dans la fenêtre suivante, choisissez « Enregistrer au format PDF » pour créer un PDF.</p>
+
+      <fieldset class="choix-impression">
+        <legend>Format des pages</legend>
+        <label><input type="radio" name="format-impression" value="portrait"> Portrait — 21 × 29,7 cm</label>
+        <label><input type="radio" name="format-impression" value="paysage" checked> Paysage — 29,7 × 21 cm</label>
+      </fieldset>
+
+      <div class="actions">
+        <button id="annuler-impression" type="button">Annuler</button>
+        <button type="submit">Ouvrir l’impression</button>
+      </div>
+    </form>
+  </dialog>
 
   <dialog id="dialogue-tache">
     <form id="formulaire-tache">
@@ -1639,7 +1699,7 @@
         <ul>
           <li><strong>Enregistrer</strong> télécharge une copie JSON du projet.</li>
           <li><strong>Lier le fichier de travail</strong> autorise l’écriture directe dans un fichier lorsque le navigateur le permet.</li>
-          <li><strong>Imprimer</strong> prépare le planning pour l’impression.</li>
+          <li><strong>Imprimer</strong> propose un format A4 portrait ou paysage et répartit le planning sur plusieurs pages si nécessaire.</li>
         </ul>
       </div>
 
@@ -1684,6 +1744,10 @@
     const boutonVerifierProjet = document.querySelector("#verifier-projet");
     const boutonBudgetMensuel = document.querySelector("#budget-mensuel");
     const boutonImprimerProjet = document.querySelector("#imprimer-projet");
+    const dialogueImpression = document.querySelector("#dialogue-impression");
+    const formulaireImpression = document.querySelector("#formulaire-impression");
+    const boutonAnnulerImpression = document.querySelector("#annuler-impression");
+    const zoneImpressionMultipage = document.querySelector("#zone-impression-multipage");
     const boutonOuvrirModeEmploi = document.querySelector("#ouvrir-mode-emploi");
     const boutonMettreAJourApplication = document.querySelector("#mettre-a-jour-application");
     const boutonGererRessources = document.querySelector("#gerer-ressources");
@@ -1781,6 +1845,7 @@
     let seuilBudgetMensuel = 0;
     let calendrierProjet = creerCalendrierParDefaut();
     let joursNonTravaillesEdition = [];
+    let formatImpression = "paysage";
     let fichierTravailLie = null;
     let ouvertureProjetEnCours = false;
     let chargementInitialActif = true;
@@ -1882,7 +1947,14 @@
     dialogueBudget.addEventListener("click", (evenement) => {
       if (evenement.target === dialogueBudget) dialogueBudget.close();
     });
-    boutonImprimerProjet.addEventListener("click", () => window.print());
+    boutonImprimerProjet.addEventListener("click", ouvrirImpression);
+    formulaireImpression.addEventListener("submit", (evenement) => {
+      evenement.preventDefault();
+      formatImpression = formulaireImpression.elements["format-impression"].value;
+      dialogueImpression.close();
+      window.requestAnimationFrame(() => window.print());
+    });
+    boutonAnnulerImpression.addEventListener("click", () => dialogueImpression.close());
     boutonOuvrirModeEmploi.addEventListener("click", () => dialogueModeEmploi.showModal());
     boutonMettreAJourApplication.addEventListener("click", async () => {
       const libelleInitial = boutonMettreAJourApplication.textContent;
@@ -1926,6 +1998,7 @@
     });
     fichierProjet.addEventListener("change", ouvrirProjet);
     window.addEventListener("beforeprint", preparerImpression);
+    window.addEventListener("afterprint", nettoyerImpression);
     window.addEventListener("resize", () => {
       repositionnerFenetresActivites();
       programmerRafraichissementGraphique();
@@ -4558,7 +4631,17 @@
       return cellule;
     }
 
+    function ouvrirImpression() {
+      const taches = [...zoneTravail.querySelectorAll(".tache")];
+      if (!taches.length) {
+        window.alert("Aucune activité n’est disponible à imprimer.");
+        return;
+      }
+      dialogueImpression.showModal();
+    }
+
     function preparerImpression() {
+      nettoyerImpression();
       const taches = [...zoneTravail.querySelectorAll(".tache")];
       if (!taches.length) return;
 
@@ -4568,20 +4651,28 @@
       const bas = Math.max(...taches.map((tache) => tache.offsetTop + tache.offsetHeight));
       const largeurPlanning = Math.max(1, droite - gauche);
       const hauteurPlanning = Math.max(1, bas - haut);
-      const largeurPage = 1047;
-      const hauteurPage = 718;
-      const margeInterieure = 18;
-      const echelle = Math.min(
-        1,
-        (largeurPage - 2 * margeInterieure) / largeurPlanning,
-        (hauteurPage - 2 * margeInterieure) / hauteurPlanning
-      );
-      const decalageX = (largeurPage - largeurPlanning * echelle) / 2 - gauche * echelle;
-      const decalageY = (hauteurPage - hauteurPlanning * echelle) / 2 - haut * echelle;
+      const largeurPage = formatImpression === "portrait" ? 718 : 1047;
+      const hauteurPage = formatImpression === "portrait" ? 1047 : 718;
+      const colonnes = Math.ceil(largeurPlanning / largeurPage);
+      const lignes = Math.ceil(hauteurPlanning / hauteurPage);
 
-      zoneTravail.style.setProperty("--impression-echelle", String(echelle));
-      zoneTravail.style.setProperty("--impression-x", `${decalageX}px`);
-      zoneTravail.style.setProperty("--impression-y", `${decalageY}px`);
+      for (let ligne = 0; ligne < lignes; ligne += 1) {
+        for (let colonne = 0; colonne < colonnes; colonne += 1) {
+          const feuille = document.createElement("section");
+          feuille.className = `feuille-impression ${formatImpression}`;
+          const copiePlanning = zoneTravail.cloneNode(true);
+          copiePlanning.classList.add("zone-impression-source");
+          copiePlanning.setAttribute("aria-hidden", "true");
+          copiePlanning.style.left = `${-gauche - colonne * largeurPage}px`;
+          copiePlanning.style.top = `${-haut - ligne * hauteurPage}px`;
+          feuille.appendChild(copiePlanning);
+          zoneImpressionMultipage.appendChild(feuille);
+        }
+      }
+    }
+
+    function nettoyerImpression() {
+      zoneImpressionMultipage.replaceChildren();
     }
 
     async function ouvrirProjet() {
